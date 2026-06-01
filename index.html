@@ -163,9 +163,6 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
   <div class="data-status" id="data-info">Loading…</div>
   <div class="data-actions">
     <button type="button" class="primary-btn" onclick="onConnectDataFolder()"><i class="ti ti-folder" aria-hidden="true"></i> Connect folder</button>
-    <button type="button" onclick="importDataFiles()"><i class="ti ti-upload" aria-hidden="true"></i> Import</button>
-    <button type="button" onclick="exportAllData()"><i class="ti ti-download" aria-hidden="true"></i> Export all</button>
-    <input type="file" id="data-import" accept=".json,application/json" multiple hidden onchange="onDataImported(this)" />
   </div>
 </div>
 
@@ -288,7 +285,8 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
       <div class="field"><label>Label text size</label><input type="number" id="labelTextSize" value="30" min="8" max="48" step="1" oninput="applyLabelSizePreview()" /><div class="hint">Item title &amp; field list above barcodes</div></div>
       <div class="field"><label>Barcode text size</label><input type="number" id="fontSize" value="14" min="8" max="24" step="1" oninput="applyLabelSizePreview()" /><div class="hint">Human-readable text under barcodes</div></div>
       <div class="field" style="align-self:end">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="showText" checked style="width:15px;height:15px" onchange="applyLabelSizePreview()"> Human-readable text (HRI)</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="showText" checked style="width:15px;height:15px" onchange="refreshLabelDisplay()"> Human-readable text (HRI)</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="showSsccOnLabel" checked style="width:15px;height:15px" onchange="refreshLabelDisplay()"> Include SSCC on label</label>
       </div>
     </div>
     <div style="font-size:11px;color:var(--color-text-tertiary);padding-top:4px;border-top:0.5px solid var(--color-border-tertiary);margin-top:4px">
@@ -396,9 +394,20 @@ let lastBuiltLabels=[];
 let lastUniqueBuiltLabels=[];
 let lastUniqueHeaders=[];
 let lastShowText=true;
+let lastShowSscc=true;
 let lastBarcodeOpts=null;
 
 const BARCODE_ORDER=['product','batch','sscc'];
+
+function showSsccOnLabel() {
+  const el=document.getElementById('showSsccOnLabel');
+  return el?el.checked:true;
+}
+
+function getActiveBarcodeKeys(label) {
+  const includeSscc=showSsccOnLabel();
+  return BARCODE_ORDER.filter(k=>(k!=='sscc'||includeSscc)&&label[k]?.rawData);
+}
 
 const SSCC_LOG_FILENAME='sscc-issued-log.json';
 const ITEMS_FILENAME='saved-items.json';
@@ -411,15 +420,9 @@ let ssccDirHandle=null;
 let ssccLogHandle=null;
 let ssccLog={version:1,nextCounter:1,issued:[]};
 let ssccLogReady=false;
-let ssccLogNeedsExport=false;
 
 let itemsCatalogHandle=null;
 let itemsCatalog={version:1,items:[]};
-let itemsCatalogNeedsExport=false;
-
-function hasNativeFileSave() {
-  return 'showDirectoryPicker'in window||'showOpenFilePicker'in window;
-}
 
 function emptySSCCLog() {
   return {version:1,nextCounter:1,issued:[]};
@@ -489,15 +492,6 @@ function ssccLogBody() {
   },null,2);
 }
 
-function downloadSSCCLogFile(body) {
-  const a=Object.assign(document.createElement('a'),{
-    href:URL.createObjectURL(new Blob([body||ssccLogBody()],{type:'application/json'})),
-    download:SSCC_LOG_FILENAME,
-  });
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 function loadSSCCFromLocalStorage() {
   try {
     const raw=localStorage.getItem(SSCC_LS_KEY);
@@ -537,18 +531,16 @@ async function writeSSCCLogFile() {
       await w.write(body);
       await w.close();
       ssccLogReady=true;
-      ssccLogNeedsExport=false;
       updateDataInfo();
       return true;
     } catch {
       ssccLogHandle=null;
       ssccLogReady=false;
-      document.getElementById('sscc-err').textContent='Could not save — reconnect your folder or export your data.';
+      document.getElementById('sscc-err').textContent='Could not save — reconnect your folder.';
       updateDataInfo();
       return false;
     }
   }
-  if (!hasNativeFileSave()) ssccLogNeedsExport=true;
   ssccLogReady=true;
   updateDataInfo();
   return false;
@@ -687,15 +679,6 @@ function saveItemsToLocalStorage() {
   localStorage.setItem(ITEMS_LS_KEY,JSON.stringify(itemsCatalog));
 }
 
-function downloadItemsCatalogFile(body) {
-  const a=Object.assign(document.createElement('a'),{
-    href:URL.createObjectURL(new Blob([body||itemsCatalogBody()],{type:'application/json'})),
-    download:ITEMS_FILENAME,
-  });
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 async function resolveItemsFileHandle() {
   if (!ssccDirHandle) return false;
   if (!(await ensureDirPermission(ssccDirHandle))) return false;
@@ -726,7 +709,6 @@ async function writeItemsFile() {
       const w=await itemsCatalogHandle.createWritable();
       await w.write(itemsCatalogBody());
       await w.close();
-      itemsCatalogNeedsExport=false;
       updateDataInfo();
       return true;
     } catch {
@@ -735,18 +717,8 @@ async function writeItemsFile() {
       return false;
     }
   }
-  if (!hasNativeFileSave()) itemsCatalogNeedsExport=true;
   updateDataInfo();
   return false;
-}
-
-async function syncItemsCatalogFromFolder() {
-  if (await resolveItemsFileHandle()) {
-    try { await readItemsFile(); } catch { /* keep local */ }
-    await writeItemsFile();
-  }
-  populateSavedItemSelect();
-  updateDataInfo();
 }
 
 function populateSavedItemSelect() {
@@ -828,83 +800,6 @@ async function deleteSelectedItem() {
   populateSavedItemSelect();
 }
 
-function detectDataFileKind(data,fileName) {
-  const name=(fileName||'').toLowerCase();
-  if (name===SSCC_LOG_FILENAME||name.includes('sscc')) return 'sscc';
-  if (name===ITEMS_FILENAME||name.includes('saved-items')||name.includes('items')) return 'items';
-  if (Array.isArray(data?.issued)) return 'sscc';
-  if (Array.isArray(data?.items)) return 'items';
-  return null;
-}
-
-function importDataFiles() {
-  document.getElementById('data-import').click();
-}
-
-async function onDataImported(input) {
-  const files=[...(input.files||[])];
-  input.value='';
-  if (!files.length) return;
-  let importedSscc=false;
-  let importedItems=false;
-  let hadError=false;
-  for (const file of files) {
-    try {
-      const data=JSON.parse(await file.text());
-      const kind=detectDataFileKind(data,file.name);
-      if (kind==='sscc') {
-        ssccLog=mergeSSCCLogData(data,ssccLog);
-        saveSSCCToLocalStorage();
-        ssccLogReady=true;
-        ssccLogNeedsExport=!ssccDirHandle;
-        importedSscc=true;
-      } else if (kind==='items') {
-        itemsCatalog=mergeItemsCatalog(data,itemsCatalog);
-        saveItemsToLocalStorage();
-        itemsCatalogNeedsExport=!ssccDirHandle;
-        importedItems=true;
-      } else {
-        hadError=true;
-      }
-    } catch {
-      hadError=true;
-    }
-  }
-  if (importedSscc||importedItems) {
-    if (ssccDirHandle) {
-      if (!itemsCatalogHandle) await resolveItemsFileHandle();
-      if (importedSscc) await writeSSCCLogFile();
-      if (importedItems) await writeItemsFile();
-    }
-    populateSavedItemSelect();
-    updateDataInfo();
-    document.getElementById('sscc-err').textContent='';
-  }
-  if (hadError) {
-    document.getElementById('sscc-err').textContent=importedSscc||importedItems
-      ? 'Some files could not be read — check that each file is valid JSON.'
-      : 'Could not read files — choose valid JSON (sscc-issued-log.json and/or saved-items.json).';
-  }
-}
-
-async function exportAllData() {
-  if (ssccDirHandle) {
-    await resolveSSCCLogHandle();
-    if (!itemsCatalogHandle) await resolveItemsFileHandle();
-    if (ssccLogHandle&&itemsCatalogHandle) {
-      await writeSSCCLogFile();
-      await writeItemsFile();
-      updateDataInfo();
-      return;
-    }
-  }
-  downloadSSCCLogFile();
-  downloadItemsCatalogFile();
-  ssccLogNeedsExport=false;
-  itemsCatalogNeedsExport=false;
-  updateDataInfo();
-}
-
 async function ensureSSCCLogReady() {
   if (await resolveSSCCLogHandle()) {
     if (ssccDirHandle&&!itemsCatalogHandle) await resolveItemsFileHandle();
@@ -944,13 +839,12 @@ function updateDataInfo() {
     return;
   }
 
-  if (!hasNativeFileSave()) {
-    const pending=(ssccLogNeedsExport||itemsCatalogNeedsExport)?' — export to save files':'';
-    dataEl.textContent=`Data stored in browser${pending}. Import JSON files or export when you want backups. ${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} item${itemCount===1?'':'s'}.`;
+  if (!('showDirectoryPicker'in window||'showOpenFilePicker'in window)) {
+    dataEl.textContent=`Data stored in browser only — use Chrome or Edge and Connect folder to save JSON files. ${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} item${itemCount===1?'':'s'}.`;
     return;
   }
 
-  dataEl.innerHTML=`Connect a folder once — <span class="data-files">${SSCC_LOG_FILENAME}</span> and <span class="data-files">${ITEMS_FILENAME}</span> both save there.<br>${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} saved item${itemCount===1?'':'s'} in memory`;
+  dataEl.innerHTML=`Connect a folder — <span class="data-files">${SSCC_LOG_FILENAME}</span> and <span class="data-files">${ITEMS_FILENAME}</span> save there automatically.<br>${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} saved item${itemCount===1?'':'s'} in memory`;
 }
 
 async function initDataStorage() {
@@ -1170,7 +1064,7 @@ function buildGS1() {
   return buildGS1WithSSCC(document.getElementById('sscc').value.trim());
 }
 
-function buildLabelHeader(builtLabel) {
+function buildLabelHeader(builtLabel,includeSscc=showSsccOnLabel()) {
   const title=document.getElementById('itemDescription').value.trim();
   const rows=[];
   const gtin=document.getElementById('gtin').value.trim();
@@ -1191,7 +1085,7 @@ function buildLabelHeader(builtLabel) {
     if (!isNaN(num)) rows.push({label:'Net weight',value:`${num} kg`});
   }
   if (count) rows.push({label:'Count',value:String(parseInt(count,10))});
-  if (builtLabel?.sscc?.fields?.[0]?.val) {
+  if (includeSscc&&builtLabel?.sscc?.fields?.[0]?.val) {
     rows.push({label:'SSCC',value:builtLabel.sscc.fields[0].val});
   }
   return {title,rows};
@@ -1300,7 +1194,7 @@ function computeAdaptiveBarcodeOpts(headers,labels) {
 
   let maxBarcodes=0;
   labels.forEach(label=>{
-    maxBarcodes=Math.max(maxBarcodes,BARCODE_ORDER.filter(k=>label[k].rawData).length);
+    maxBarcodes=Math.max(maxBarcodes,getActiveBarcodeKeys(label).length);
   });
   if (!maxBarcodes) maxBarcodes=1;
 
@@ -1337,10 +1231,26 @@ function expandLabelSets(labels,headers,copies) {
 function renderLabelPreview(labels,headers,showText) {
   const preview=document.getElementById('barcode-preview');
   preview.innerHTML=labels.map((label,idx)=>{
-    const activeKeys=BARCODE_ORDER.filter(k=>label[k].rawData);
+    const activeKeys=getActiveBarcodeKeys(label);
     return renderLabelSheet(idx,activeKeys,showText,headers[idx]);
   }).join('');
   applyLabelHeaderFontSizes();
+}
+
+function refreshLabelDisplay() {
+  if (!lastUniqueBuiltLabels.length) {
+    applyLabelSizePreview();
+    return;
+  }
+  lastShowText=document.getElementById('showText').checked;
+  lastShowSscc=showSsccOnLabel();
+  lastUniqueHeaders=lastUniqueBuiltLabels.map(label=>buildLabelHeader(label,lastShowSscc));
+  const copies=getLabelCopies();
+  const expanded=expandLabelSets(lastUniqueBuiltLabels,lastUniqueHeaders,copies);
+  lastBuiltLabels=expanded.labels;
+  lastLabelHeaders=expanded.headers;
+  renderLabelPreview(expanded.labels,expanded.headers,lastShowText);
+  applyLabelSizePreview();
 }
 
 function refreshLabelCopies() {
@@ -1365,6 +1275,7 @@ function applyLabelSizePreview() {
   const source=lastBuiltLabels.length?lastBuiltLabels:lastUniqueBuiltLabels;
   const headers=lastLabelHeaders.length?lastLabelHeaders:lastUniqueHeaders;
   if (source.length) {
+    lastShowText=document.getElementById('showText').checked;
     const opts=computeAdaptiveBarcodeOpts(
       lastUniqueHeaders.length?lastUniqueHeaders:headers,
       lastUniqueBuiltLabels.length?lastUniqueBuiltLabels:source,
@@ -1412,13 +1323,13 @@ function applyCompactHeaderClasses() {
 
 function renderEncodedLabels(labels,opts,showText) {
   labels.forEach((label,idx)=>{
-    BARCODE_ORDER.filter(k=>label[k].rawData).forEach(k=>{
+    getActiveBarcodeKeys(label).forEach(k=>{
       encodeBarcode(`barcodesvg-${idx}-${k}`,label[k].rawData,opts);
     });
   });
   if (showText) {
     labels.forEach((label,idx)=>{
-      BARCODE_ORDER.filter(k=>label[k].rawData).forEach(k=>{
+      getActiveBarcodeKeys(label).forEach(k=>{
         const hri=document.getElementById(`barcode-hri-${idx}-${k}`);
         if (!hri) return;
         hri.style.fontSize=opts.fontSize+'px';
@@ -1538,7 +1449,8 @@ async function generate() {
   }
 
   const showText=document.getElementById('showText').checked;
-  const uniqueHeaders=labels.map(label=>buildLabelHeader(label));
+  lastShowSscc=showSsccOnLabel();
+  const uniqueHeaders=labels.map(label=>buildLabelHeader(label,lastShowSscc));
   let copies=getLabelCopies();
   const maxTotal=100;
   if (labelCount*copies>maxTotal) {

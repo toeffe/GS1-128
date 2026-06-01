@@ -28,13 +28,13 @@ Paste scanner output or `(AI)value` notation. The verifier parses FNC1-separated
 | `sscc-issued-log.json` | Issued SSCCs and the next serial counter — prevents reuse |
 | `saved-items.json` | Saved product presets |
 
-**Connect folder** (Chrome/Edge) writes these files directly via the File System Access API. Without folder access, data is kept in `localStorage` and can be exported or imported as JSON.
+**Connect folder** (Chrome/Edge) writes these files directly via the File System Access API. Without folder access, data is kept in `localStorage` only.
 
 ## Quick start
 
 1. Clone or download this repository.
 2. Open `gs1-128.html` in a modern browser (Chrome or Edge recommended for folder sync).
-3. Optionally click **Connect folder** and choose a directory for the JSON data files.
+3. Click **Connect folder** and choose a directory for the JSON data files.
 4. Fill in product fields (or use **Load example**), then click **Generate barcodes**.
 5. Use **Print labels** or copy data strings as needed.
 
