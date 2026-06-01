@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GS1-128 Generator &amp; Verifier</title>
+<link rel="stylesheet" href="lib/tabler-icons/tabler-icons.css">
+<script src="lib/jsbarcode/JsBarcode.all.min.js"></script>
+<script src="lib/gs1-core.js"></script>
+<style>
+:root{
+  --color-background-primary:#fff;
+  --color-background-secondary:#f5f5f7;
+  --color-border-primary:#333;
+  --color-border-secondary:#d1d1d6;
+  --color-border-tertiary:#e5e5ea;
+  --color-text-primary:#1d1d1f;
+  --color-text-secondary:#6e6e73;
+  --color-text-tertiary:#aeaeb2;
+  --color-text-danger:#d70015;
+  --color-text-success:#248a3d;
+  --color-text-warning:#b25000;
+  --color-background-danger:#ffebe9;
+  --color-background-success:#e9f7ec;
+  --color-background-warning:#fff4e5;
+  --font-mono:ui-monospace,'Cascadia Code','Consolas',monospace;
+  --border-radius-md:6px;
+  --border-radius-lg:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--color-background-secondary);color:var(--color-text-primary);padding:0 1.25rem 2rem;max-width:900px;margin:0 auto}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.wrap{padding:1.25rem 0}
+.tabs{display:flex;margin-bottom:0;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md) var(--border-radius-md) 0 0;overflow:hidden}
+#data-section{margin-top:0;margin-bottom:10px;border-top:none;border-radius:0 0 var(--border-radius-lg) var(--border-radius-lg)}
+.tab{flex:1;padding:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:var(--color-background-primary);color:var(--color-text-secondary);border-right:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;gap:6px}
+.tab:last-child{border-right:none}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.tab:hover:not(.active){background:var(--color-background-secondary)}
+.panel{display:none}.panel.active{display:block}
+.section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:10px}
+.sec-title{font-size:12px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.04em;text-transform:uppercase}
+.field label.req::after{content:' *';color:var(--color-text-danger);font-weight:600;letter-spacing:normal;text-transform:none}
+.field .hint{font-size:11px;color:var(--color-text-tertiary)}
+.sscc-log-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px}
+.sscc-log-row .hint{margin:0;flex:1 1 220px}
+.sscc-log-btns{display:flex;gap:6px;flex-wrap:wrap}
+.sscc-log-btns button{font-size:11px;padding:4px 10px}
+.data-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.data-actions button{font-size:12px;padding:6px 12px}
+.data-actions .primary-btn{font-weight:500}
+.data-status{margin-top:6px;font-size:12px;color:var(--color-text-secondary);line-height:1.45}
+.data-status .data-files{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary)}
+.saved-items-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;margin-bottom:10px}
+.saved-item-select{flex:1 1 200px;margin:0}
+.saved-item-btns{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:1px}
+.saved-item-btns button{font-size:11px;padding:6px 10px}
+.field input{font-size:13px;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+.ai-field{position:relative}
+.ai-field::after{content:'(AI ' attr(data-ai) ')';position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 4px);padding:3px 8px;font-size:11px;font-weight:500;font-family:system-ui,sans-serif;letter-spacing:normal;text-transform:none;color:var(--color-text-primary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);box-shadow:0 2px 8px rgba(0,0,0,.08);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:2}
+.ai-field:hover::after{opacity:1}
+.inline-err{font-size:11px;color:var(--color-text-danger);min-height:14px}
+.btn-row{display:flex;gap:8px;margin-bottom:1rem}
+button{font-size:13px;padding:7px 14px;cursor:pointer;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);display:flex;align-items:center;gap:6px}
+button:hover{background:var(--color-background-secondary)}
+button:active{transform:scale(.98)}
+.primary-btn{background:var(--color-background-secondary);font-weight:500}
+.barcode-preview-wrap{display:flex;flex-direction:column;gap:12px;margin-bottom:10px}
+.label-sheet{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:3mm;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box}
+.label-fit{transform-origin:top center;width:100%;flex-shrink:0}
+.barcode-row{padding:0.2rem 0;text-align:center}
+.barcode-divider{border-top:0.5px dashed var(--color-border-tertiary);margin:0.25rem 0}
+.barcode-stack{display:flex;flex-direction:column;align-items:center;width:100%;max-width:100%}
+.label-sheet svg{display:block;max-width:100%;height:auto}
+.label-sheet+.label-sheet{margin-top:14px}
+.label-header{padding:0 0 0.4rem;text-align:left;--label-title-size:15px;--label-meta-size:10px}
+.label-title{font-size:var(--label-title-size);font-weight:600;line-height:1.25;margin-bottom:4px;color:var(--color-text-primary)}
+.label-meta{display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:var(--label-meta-size);line-height:1.35}
+.label-meta.label-meta-compact{font-size:calc(var(--label-meta-size) - 1px);line-height:1.25;gap:0 8px}
+.label-title.label-title-compact{font-size:calc(var(--label-title-size) - 2px);margin-bottom:2px}
+.label-meta dt{color:var(--color-text-secondary);font-weight:500}
+.label-meta dd{color:var(--color-text-primary);font-family:var(--font-mono);margin:0;overflow-wrap:anywhere}
+.barcode-preview-wrap .label-sheet{margin-left:auto;margin-right:auto}
+.field select{font-size:13px;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+@media print{
+  html,body{height:auto;margin:0!important;padding:0!important;overflow:visible;background:#fff}
+  body{max-width:none}
+  .tabs,.section,.btn-row,.actions,.gen-err,.sr-only,#panel-verify{display:none!important}
+  #panel-gen.panel{display:block!important}
+  .wrap,.barcode-preview-wrap{margin:0!important;padding:0!important;gap:0!important}
+  .label-sheet{
+    border:none;border-radius:0;box-shadow:none;margin:0!important;padding:2mm;
+    page-break-inside:avoid;break-inside:avoid;
+    page-break-after:always;break-after:page;
+    background:#fff;overflow:hidden!important;
+    box-sizing:border-box;
+  }
+  .label-sheet:last-child{page-break-after:avoid!important;break-after:avoid!important}
+  .label-sheet+.label-sheet{margin-top:0!important}
+  .label-fit{transform:none!important;width:100%!important;margin:0!important}
+  .label-title,.label-meta dd,.hri-text{color:#000!important}
+  .label-meta dt{color:#444!important}
+  .barcode-divider{border-color:#ccc}
+  .ai-field::after{display:none!important}
+  .hri-seg{border-bottom:none}
+}
+.hri-text{width:100%;max-width:100%;padding:4px 2px 0;font-family:var(--font-mono);text-align:center;line-height:1.35;color:var(--color-text-primary);overflow-wrap:anywhere}
+.hri-seg{position:relative;display:inline;white-space:nowrap}
+.empty-state{color:var(--color-text-tertiary);font-size:13px}
+.data-mono{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:8px 12px;border-radius:var(--border-radius-md);word-break:break-all;color:var(--color-text-secondary);margin-bottom:8px}
+.actions{display:flex;gap:8px;margin-bottom:1rem}
+.act-btn{flex:1;font-size:12px;padding:6px;justify-content:center}
+textarea{width:100%;font-family:var(--font-mono);font-size:13px;padding:10px 12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);resize:vertical;min-height:68px}
+textarea:focus{outline:none;border-color:var(--color-border-primary)}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.65rem .9rem}
+.stat-label{font-size:11px;color:var(--color-text-secondary);margin-bottom:3px}
+.stat-val{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.result-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.result-row:last-child{border-bottom:none;padding-bottom:0}
+.ai-tag{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:2px 6px;color:var(--color-text-secondary);white-space:nowrap;min-width:46px;text-align:center}
+.fname{font-size:12px;color:var(--color-text-secondary);min-width:120px}
+.fval{font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);font-weight:500;flex:1;word-break:break-all}
+.badge{font-size:11px;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.b-ok{background:var(--color-background-success);color:var(--color-text-success)}
+.b-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-err{background:var(--color-background-danger);color:var(--color-text-danger)}
+.issue-list{display:flex;flex-direction:column;gap:5px}
+.issue{font-size:12px;display:flex;align-items:flex-start;gap:7px;padding:7px 10px;border-radius:var(--border-radius-md)}
+.issue.err{background:var(--color-background-danger);color:var(--color-text-danger)}
+.issue.warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.issue.ok{background:var(--color-background-success);color:var(--color-text-success)}
+.gen-err{font-size:13px;color:var(--color-text-danger);padding:8px 12px;background:var(--color-background-danger);border-radius:var(--border-radius-md);margin-bottom:10px}
+.verify-barcode-grid{display:flex;flex-direction:column;gap:10px}
+.verify-barcode{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;background:var(--color-background-secondary)}
+.verify-barcode-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.verify-barcode-title{font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;color:var(--color-text-primary)}
+.verify-fields .result-row{padding:5px 0}
+.verify-field-note{padding:0 0 4px 62px;font-size:11px;font-style:italic;line-height:1.35}
+.verify-field-note.err{color:var(--color-text-danger)}
+.verify-field-note.warn{color:var(--color-text-warning)}
+.verify-field-note.ok{color:var(--color-text-success)}
+.verify-raw{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--color-border-tertiary);word-break:break-all;line-height:1.4}
+.verify-empty{font-size:12px;color:var(--color-text-danger)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<h2 class="sr-only">GS1-128 barcode generator and verifier for food production</h2>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('gen')"><i class="ti ti-barcode" aria-hidden="true"></i> Generate</button>
+  <button class="tab" onclick="switchTab('verify')"><i class="ti ti-scan" aria-hidden="true"></i> Verify / Decode</button>
+</div>
+
+<div class="section" id="data-section">
+  <div class="sec-title"><i class="ti ti-database" aria-hidden="true"></i> Data</div>
+  <div class="data-status" id="data-info">Loading…</div>
+  <div class="data-actions">
+    <button type="button" class="primary-btn" onclick="onConnectDataFolder()"><i class="ti ti-folder" aria-hidden="true"></i> Connect folder</button>
+    <button type="button" onclick="importDataFiles()"><i class="ti ti-upload" aria-hidden="true"></i> Import</button>
+    <button type="button" onclick="exportAllData()"><i class="ti ti-download" aria-hidden="true"></i> Export all</button>
+    <input type="file" id="data-import" accept=".json,application/json" multiple hidden onchange="onDataImported(this)" />
+  </div>
+</div>
+
+<div id="panel-gen" class="panel active">
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-truck" aria-hidden="true"></i> Logistics</div>
+    <div class="grid3">
+      <div class="field ai-field" data-ai="00">
+        <label>SSCC</label>
+        <input type="text" id="sscc" readonly placeholder="Next SSCC — assigned when you generate" />
+        <div class="inline-err" id="sscc-err"></div>
+      </div>
+      <div class="field">
+        <label>Labels to generate</label>
+        <input type="number" id="labelCount" value="1" min="1" max="50" step="1" />
+        <div class="hint">Each gets a unique SSCC</div>
+      </div>
+      <div class="field">
+        <label>Copies per label</label>
+        <input type="number" id="labelCopies" value="1" min="1" max="10" step="1" onchange="refreshLabelCopies()" />
+        <div class="hint">Duplicate each label when printing</div>
+      </div>
+    </div>
+    <div class="sscc-log-row">
+      <div class="hint" id="sscc-log-info">Loading SSCC log…</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-tag" aria-hidden="true"></i> Product identification</div>
+    <div class="saved-items-row">
+      <div class="field saved-item-select">
+        <label>Saved item</label>
+        <select id="savedItemSelect" onchange="onSavedItemSelect()">
+          <option value="">— Choose saved item —</option>
+        </select>
+      </div>
+      <div class="saved-item-btns">
+        <button type="button" onclick="saveCurrentItem()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Save</button>
+        <button type="button" onclick="deleteSelectedItem()"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label class="req" for="itemDescription">Item description</label>
+      <input type="text" id="itemDescription" maxlength="120" placeholder="Frozen salmon fillets 1.25 kg" />
+      <div class="hint">Shown on the label above the barcodes (not encoded)</div>
+      <div class="inline-err" id="itemDescription-err"></div>
+    </div>
+    <div class="grid2">
+      <div class="field ai-field" data-ai="02">
+        <label class="req" for="gtin">GTIN-14</label>
+        <input type="text" id="gtin" maxlength="14" placeholder="05012345678900" />
+        <div class="hint">14 digits — check digit validated</div>
+        <div class="inline-err" id="gtin-err"></div>
+      </div>
+      <div class="field ai-field" data-ai="10">
+        <label class="req" for="batch">Batch / Lot</label>
+        <input type="text" id="batch" maxlength="20" placeholder="BATCH42A" />
+        <div class="hint">Up to 20 chars, GS1-82 charset</div>
+        <div class="inline-err" id="batch-err"></div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-calendar" aria-hidden="true"></i> Dates</div>
+    <div class="grid3">
+      <div class="field ai-field" data-ai="11"><label class="req" for="prodDate">Prod. date</label><input type="date" id="prodDate" /><div class="hint">YYMMDD</div><div class="inline-err" id="prodDate-err"></div></div>
+      <div class="field ai-field" data-ai="15"><label class="req" for="bestBefore">Best before</label><input type="date" id="bestBefore" /><div class="hint">YYMMDD</div><div class="inline-err" id="bestBefore-err"></div></div>
+      <div class="field ai-field" data-ai="17"><label for="useBy">Use-by / Expiry</label><input type="date" id="useBy" /><div class="hint">YYMMDD</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-scale" aria-hidden="true"></i> Weight &amp; count</div>
+    <div class="grid2">
+      <div class="field ai-field" data-ai="3102">
+        <label>Net weight kg</label>
+        <input type="number" id="netWeight" placeholder="1.250" step="0.01" min="0" />
+        <div class="hint">2 decimal places encoded (×10⁻²), max 9999.99 kg</div>
+        <div class="inline-err" id="weight-err"></div>
+      </div>
+      <div class="field ai-field" data-ai="37">
+        <label class="req" for="count">Count</label>
+        <input type="number" id="count" placeholder="24" step="1" min="0" max="99999999" />
+        <div class="hint">Max 8 digits</div>
+        <div class="inline-err" id="count-err"></div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><i class="ti ti-settings" aria-hidden="true"></i> Printer &amp; label settings <span style="font-size:10px;font-weight:400;color:var(--color-text-tertiary);margin-left:4px">Zebra ZT420</span></div>
+    <div class="grid3" style="margin-bottom:8px">
+      <div class="field">
+        <label>Printer DPI</label>
+        <select id="printerDpi" onchange="onPrinterDpiChange()">
+          <option value="203" selected>203 dpi (standard)</option>
+          <option value="300">300 dpi (high-res)</option>
+        </select>
+        <div class="hint">ZT420 supports 203 and 300 dpi heads</div>
+      </div>
+      <div class="field"><label>Bar width (dots)</label><input type="number" id="barWidth" value="2" min="1" max="4" step="0.5" /><div class="hint">1 dot = 1÷DPI inch at print</div></div>
+      <div class="field"><label>Bar height (px)</label><input type="number" id="barHeight" value="80" min="30" max="200" /></div>
+    </div>
+    <div class="grid3" style="margin-bottom:8px">
+      <div class="field">
+        <label>Label size</label>
+        <select id="labelSizePreset" onchange="onLabelSizePresetChange()">
+          <option value="147x209" selected>147×209 mm (your stock)</option>
+          <option value="101x152">101×152 mm (4″×6″ — shipping)</option>
+          <option value="152x102">152×102 mm (6″×4″ — landscape)</option>
+          <option value="101x101">101×101 mm (4″×4″ — square)</option>
+          <option value="102x51">102×51 mm (4″×2″ — small)</option>
+          <option value="148x210">148×210 mm (A5)</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <!-- ZT420: min label width 51 mm, max print width 168 mm -->
+      <div class="field"><label>Label width (mm)</label><input type="number" id="labelWidthMm" value="147" min="51" max="168" step="1" oninput="onLabelSizeCustom()" /><div class="hint">ZT420: 51–168 mm</div></div>
+      <div class="field"><label>Label height (mm)</label><input type="number" id="labelHeightMm" value="209" min="20" max="600" step="1" oninput="onLabelSizeCustom()" /></div>
+    </div>
+    <div class="grid3" style="margin-bottom:8px">
+      <div class="field"><label>Label text size</label><input type="number" id="labelTextSize" value="30" min="8" max="48" step="1" oninput="applyLabelSizePreview()" /><div class="hint">Item title &amp; field list above barcodes</div></div>
+      <div class="field"><label>Barcode text size</label><input type="number" id="fontSize" value="14" min="8" max="24" step="1" oninput="applyLabelSizePreview()" /><div class="hint">Human-readable text under barcodes</div></div>
+      <div class="field" style="align-self:end">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="showText" checked style="width:15px;height:15px" onchange="applyLabelSizePreview()"> Human-readable text (HRI)</label>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--color-text-tertiary);padding-top:4px;border-top:0.5px solid var(--color-border-tertiary);margin-top:4px">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      ZT420 · Max print width 168 mm · 203 or 300 dpi · 12 ips · CODE128 / GS1-128 ✓
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="primary-btn" onclick="generate()"><i class="ti ti-refresh" aria-hidden="true"></i> Generate barcodes</button>
+    <button onclick="loadExample()"><i class="ti ti-flask" aria-hidden="true"></i> Load example</button>
+  </div>
+  <div class="actions" id="gen-actions" style="display:none">
+    <button class="act-btn" onclick="printLabels()"><i class="ti ti-printer" aria-hidden="true"></i> Print labels</button>
+    <button class="act-btn" onclick="sendToVerifier()"><i class="ti ti-scan" aria-hidden="true"></i> Verify label</button>
+    <button class="act-btn" id="copy-btn" onclick="copyDS()"><i class="ti ti-copy" aria-hidden="true"></i> Copy data strings</button>
+  </div>
+  <div id="gen-error" style="display:none" class="gen-err"></div>
+  <div class="barcode-preview-wrap" id="barcode-preview">
+    <div class="empty-state" style="padding:2rem 1rem"><i class="ti ti-barcode" style="font-size:28px;display:block;margin-bottom:6px" aria-hidden="true"></i>Fill in fields and click Generate</div>
+  </div>
+</div>
+
+<div id="panel-verify" class="panel">
+  <div class="field" style="margin-bottom:10px">
+    <label>GS1-128 data string</label>
+    <textarea id="verifyInput" placeholder="(02)05012345678900(11)260516(15)280516...&#10;or paste raw scanner output with FNC1 separators"></textarea>
+    <div class="hint" style="margin-top:4px">Accepts <span style="font-family:var(--font-mono)">(AI)value</span> notation, raw FNC1-separated strings, or plain concatenated data.</div>
+  </div>
+  <div class="btn-row">
+    <button class="primary-btn" onclick="decode()"><i class="ti ti-scan" aria-hidden="true"></i> Decode &amp; verify</button>
+    <button onclick="loadVerifyExample()"><i class="ti ti-flask" aria-hidden="true"></i> Load example</button>
+    <button onclick="clearVerify()"><i class="ti ti-x" aria-hidden="true"></i> Clear</button>
+  </div>
+  <div id="verify-output"></div>
+</div>
+</div>
+
+<script>
+let FNC1, GS1_AI, SAVED_ITEM_FIELDS,
+    gs1Mod10, luhn14, calcCheckDigit,
+    isGS182, stripNonGS182, dateToYYMMDD,
+    derivePrefixFromGtin, composeSSCC,
+    mergeSSCCLogData, mergeItemsCatalog,
+    splitVerifyInput, formatValue, validateField, parseFields,
+    barcodeTitleFromFields;
+
+function initGS1Core() {
+  if (!window.GS1Core) {
+    throw new Error('lib/gs1-core.js not loaded — window.GS1Core is undefined');
+  }
+  ({
+    FNC1, GS1_AI, SAVED_ITEM_FIELDS,
+    gs1Mod10, luhn14, calcCheckDigit,
+    isGS182, stripNonGS182, dateToYYMMDD,
+    derivePrefixFromGtin, composeSSCC,
+    mergeSSCCLogData, mergeItemsCatalog,
+    splitVerifyInput, formatValue, validateField, parseFields,
+    barcodeTitleFromFields,
+  } = window.GS1Core);
+}
+
+const RUNTIME_ITEM_FIELDS = ['batch', 'prodDate', 'bestBefore', 'useBy'];
+
+const REQUIRED_LABEL_FIELDS=[
+  {id:'itemDescription',label:'Item description',err:'itemDescription-err'},
+  {id:'gtin',label:'GTIN-14',err:'gtin-err'},
+  {id:'batch',label:'Batch / Lot',err:'batch-err'},
+  {id:'prodDate',label:'Prod. date',err:'prodDate-err'},
+  {id:'bestBefore',label:'Best before',err:'bestBefore-err'},
+  {id:'count',label:'Count',err:'count-err'},
+];
+
+const EXAMPLE = {
+  itemDescription: 'Frozen salmon fillets 1.25 kg',
+  gtin: '05012345678900',
+  batch: 'BATCH42A',
+  prodDate: '2026-05-16',
+  bestBefore: '2027-01-01',
+  useBy: '2027-12-31',
+  netWeight: '1.25',
+  count: '24',
+};
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='gen')||(i===1&&t==='verify')));
+  document.getElementById('panel-gen').classList.toggle('active',t==='gen');
+  document.getElementById('panel-verify').classList.toggle('active',t==='verify');
+}
+
+// ZT420 label size presets — max print width 168 mm, min width 51 mm
+const LABEL_SIZE_PRESETS={
+  '147x209':{w:147,h:209,page:'147mm 209mm'},   // your label stock
+  '101x152':{w:101,h:152,page:'101mm 152mm'},   // 4"×6" shipping label
+  '152x102':{w:152,h:102,page:'152mm 102mm'},   // 6"×4" landscape
+  '101x101':{w:101,h:101,page:'101mm 101mm'},   // 4"×4" square
+  '102x51':{w:102,h:51,page:'102mm 51mm'},      // 4"×2" small
+  '148x210':{w:148,h:210,page:'148mm 210mm'},   // A5
+  custom:null,
+};
+
+let lastBarcodes={product:null,batch:null,sscc:null};
+let lastLabels=[];
+let lastLabelHeaders=[];
+let lastBuiltLabels=[];
+let lastUniqueBuiltLabels=[];
+let lastUniqueHeaders=[];
+let lastShowText=true;
+let lastBarcodeOpts=null;
+
+const BARCODE_ORDER=['product','batch','sscc'];
+
+const SSCC_LOG_FILENAME='sscc-issued-log.json';
+const ITEMS_FILENAME='saved-items.json';
+const SSCC_EXTENSION='0';
+const SSCC_IDB={name:'gs1-barcode',store:'handles',dirKey:'ssccDir',fileKey:'ssccFile'};
+const SSCC_LS_KEY='gs1.sscc.log';
+const ITEMS_LS_KEY='gs1.saved.items';
+
+let ssccDirHandle=null;
+let ssccLogHandle=null;
+let ssccLog={version:1,nextCounter:1,issued:[]};
+let ssccLogReady=false;
+let ssccLogNeedsExport=false;
+
+let itemsCatalogHandle=null;
+let itemsCatalog={version:1,items:[]};
+let itemsCatalogNeedsExport=false;
+
+function hasNativeFileSave() {
+  return 'showDirectoryPicker'in window||'showOpenFilePicker'in window;
+}
+
+function emptySSCCLog() {
+  return {version:1,nextCounter:1,issued:[]};
+}
+
+function idbOpen() {
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(SSCC_IDB.name,1);
+    req.onupgradeneeded=()=>req.result.createObjectStore(SSCC_IDB.store);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+async function idbGet(key) {
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(SSCC_IDB.store,'readonly');
+    const req=tx.objectStore(SSCC_IDB.store).get(key);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+async function idbSet(key,val) {
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(SSCC_IDB.store,'readwrite');
+    tx.objectStore(SSCC_IDB.store).put(val,key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+
+async function idbDel(key) {
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(SSCC_IDB.store,'readwrite');
+    tx.objectStore(SSCC_IDB.store).delete(key);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+
+function getSSCCUsedRecords() {
+  return Array.isArray(ssccLog.issued)?ssccLog.issued:[];
+}
+
+function getSSCCUsedSet() {
+  return new Set(getSSCCUsedRecords().map(r=>r.sscc));
+}
+
+function getSSCCCounter() {
+  const n=parseInt(ssccLog.nextCounter,10);
+  return Number.isFinite(n)&&n>0?n:1;
+}
+
+function setSSCCCounter(n) {
+  ssccLog.nextCounter=n;
+}
+
+function ssccLogBody() {
+  return JSON.stringify({
+    version:ssccLog.version,
+    nextCounter:getSSCCCounter(),
+    issued:getSSCCUsedRecords(),
+  },null,2);
+}
+
+function downloadSSCCLogFile(body) {
+  const a=Object.assign(document.createElement('a'),{
+    href:URL.createObjectURL(new Blob([body||ssccLogBody()],{type:'application/json'})),
+    download:SSCC_LOG_FILENAME,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function loadSSCCFromLocalStorage() {
+  try {
+    const raw=localStorage.getItem(SSCC_LS_KEY);
+    if (raw) ssccLog=JSON.parse(raw);
+    if (!Array.isArray(ssccLog.issued)) ssccLog.issued=[];
+    if (!ssccLog.nextCounter) ssccLog.nextCounter=1;
+  } catch {
+    ssccLog=emptySSCCLog();
+  }
+}
+
+function saveSSCCToLocalStorage() {
+  localStorage.setItem(SSCC_LS_KEY,JSON.stringify(ssccLog));
+}
+
+async function readSSCCLogFile() {
+  if (!ssccLogHandle) return;
+  const file=await ssccLogHandle.getFile();
+  if (!file.size) {
+    ssccLog=emptySSCCLog();
+    return;
+  }
+  try {
+    const data=JSON.parse(await file.text());
+    ssccLog=mergeSSCCLogData(data,emptySSCCLog());
+  } catch {
+    ssccLog=emptySSCCLog();
+  }
+}
+
+async function writeSSCCLogFile() {
+  const body=ssccLogBody();
+  saveSSCCToLocalStorage();
+  if (ssccLogHandle) {
+    try {
+      const w=await ssccLogHandle.createWritable();
+      await w.write(body);
+      await w.close();
+      ssccLogReady=true;
+      ssccLogNeedsExport=false;
+      updateDataInfo();
+      return true;
+    } catch {
+      ssccLogHandle=null;
+      ssccLogReady=false;
+      document.getElementById('sscc-err').textContent='Could not save — reconnect your folder or export your data.';
+      updateDataInfo();
+      return false;
+    }
+  }
+  if (!hasNativeFileSave()) ssccLogNeedsExport=true;
+  ssccLogReady=true;
+  updateDataInfo();
+  return false;
+}
+
+async function ensureDirPermission(dirHandle) {
+  if (!dirHandle) return false;
+  let perm=await dirHandle.queryPermission({mode:'readwrite'});
+  if (perm==='prompt') perm=await dirHandle.requestPermission({mode:'readwrite'});
+  return perm==='granted';
+}
+
+async function ensureFilePermission(fileHandle) {
+  if (!fileHandle) return false;
+  let perm=await fileHandle.queryPermission({mode:'readwrite'});
+  if (perm==='prompt') perm=await fileHandle.requestPermission({mode:'readwrite'});
+  return perm==='granted';
+}
+
+async function resolveSSCCLogHandle() {
+  if (ssccDirHandle) {
+    if (!(await ensureDirPermission(ssccDirHandle))) return false;
+    ssccLogHandle=await ssccDirHandle.getFileHandle(SSCC_LOG_FILENAME,{create:true});
+    return true;
+  }
+  if (ssccLogHandle) return ensureFilePermission(ssccLogHandle);
+  return false;
+}
+
+async function onConnectDataFolder() {
+  const err=await connectDataFolder();
+  if (err) document.getElementById('sscc-err').textContent=err;
+}
+
+async function connectDataFolder() {
+  document.getElementById('sscc-err').textContent='';
+  if ('showDirectoryPicker'in window) {
+    try {
+      ssccDirHandle=await window.showDirectoryPicker({mode:'readwrite'});
+      await idbSet(SSCC_IDB.dirKey,ssccDirHandle);
+      await idbDel(SSCC_IDB.fileKey);
+      ssccLogHandle=await ssccDirHandle.getFileHandle(SSCC_LOG_FILENAME,{create:true});
+      itemsCatalogHandle=await ssccDirHandle.getFileHandle(ITEMS_FILENAME,{create:true});
+    } catch (e) {
+      if (e.name==='AbortError') return 'Choose the folder where your JSON files live (or should be saved).';
+      throw e;
+    }
+  } else if ('showOpenFilePicker'in window) {
+    try {
+      [ssccLogHandle]=await window.showOpenFilePicker({
+        types:[{description:'SSCC log',accept:{'application/json':['.json']}}],
+        multiple:false,
+      });
+    } catch (e) {
+      if (e.name!=='AbortError') throw e;
+      try {
+        ssccLogHandle=await window.showSaveFilePicker({
+          suggestedName:SSCC_LOG_FILENAME,
+          types:[{description:'SSCC log',accept:{'application/json':['.json']}}],
+        });
+      } catch (e2) {
+        if (e2.name==='AbortError') return 'Select sscc-issued-log.json to save issued SSCCs.';
+        throw e2;
+      }
+    }
+    if (!(await ensureFilePermission(ssccLogHandle))) return 'Could not access the log file.';
+    await idbSet(SSCC_IDB.fileKey,ssccLogHandle);
+    ssccDirHandle=null;
+    itemsCatalogHandle=null;
+  } else {
+    loadSSCCFromLocalStorage();
+    loadItemsFromLocalStorage();
+    ssccLogReady=true;
+    populateSavedItemSelect();
+    updateDataInfo();
+    return null;
+  }
+  await readSSCCLogFile();
+  if (itemsCatalogHandle) {
+    try { await readItemsFile(); } catch { /* keep local */ }
+  }
+  await writeSSCCLogFile();
+  await writeItemsFile();
+  ssccLogReady=true;
+  populateSavedItemSelect();
+  updateDataInfo();
+  return null;
+}
+
+async function restoreDataAccess() {
+  if (!ssccDirHandle) ssccDirHandle=await idbGet(SSCC_IDB.dirKey);
+  if (ssccDirHandle&&await ensureDirPermission(ssccDirHandle)) {
+    ssccLogHandle=await ssccDirHandle.getFileHandle(SSCC_LOG_FILENAME,{create:true});
+    await readSSCCLogFile();
+    ssccLogReady=true;
+    await resolveItemsFileHandle();
+    if (itemsCatalogHandle) {
+      try { await readItemsFile(); } catch { /* keep local */ }
+    }
+    return true;
+  }
+  if (!ssccLogHandle) ssccLogHandle=await idbGet(SSCC_IDB.fileKey);
+  if (ssccLogHandle&&await ensureFilePermission(ssccLogHandle)) {
+    await readSSCCLogFile();
+    ssccLogReady=true;
+    itemsCatalogHandle=null;
+    return true;
+  }
+  return false;
+}
+
+function emptyItemsCatalog() {
+  return {version:1,items:[]};
+}
+
+function createItemId() {
+  if (typeof crypto!=='undefined'&&crypto.randomUUID) return crypto.randomUUID();
+  return `item_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+}
+
+function itemsCatalogBody() {
+  return JSON.stringify(itemsCatalog,null,2);
+}
+
+function loadItemsFromLocalStorage() {
+  try {
+    const raw=localStorage.getItem(ITEMS_LS_KEY);
+    if (raw) itemsCatalog=mergeItemsCatalog(JSON.parse(raw),emptyItemsCatalog());
+    if (!Array.isArray(itemsCatalog.items)) itemsCatalog=emptyItemsCatalog();
+  } catch {
+    itemsCatalog=emptyItemsCatalog();
+  }
+}
+
+function saveItemsToLocalStorage() {
+  localStorage.setItem(ITEMS_LS_KEY,JSON.stringify(itemsCatalog));
+}
+
+function downloadItemsCatalogFile(body) {
+  const a=Object.assign(document.createElement('a'),{
+    href:URL.createObjectURL(new Blob([body||itemsCatalogBody()],{type:'application/json'})),
+    download:ITEMS_FILENAME,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function resolveItemsFileHandle() {
+  if (!ssccDirHandle) return false;
+  if (!(await ensureDirPermission(ssccDirHandle))) return false;
+  itemsCatalogHandle=await ssccDirHandle.getFileHandle(ITEMS_FILENAME,{create:true});
+  return true;
+}
+
+async function readItemsFile() {
+  if (!itemsCatalogHandle) return;
+  const file=await itemsCatalogHandle.getFile();
+  if (!file.size) {
+    itemsCatalog=emptyItemsCatalog();
+    return;
+  }
+  try {
+    const data=JSON.parse(await file.text());
+    itemsCatalog=mergeItemsCatalog(data,emptyItemsCatalog());
+  } catch {
+    itemsCatalog=emptyItemsCatalog();
+  }
+}
+
+async function writeItemsFile() {
+  if (!itemsCatalogHandle&&ssccDirHandle) await resolveItemsFileHandle();
+  saveItemsToLocalStorage();
+  if (itemsCatalogHandle) {
+    try {
+      const w=await itemsCatalogHandle.createWritable();
+      await w.write(itemsCatalogBody());
+      await w.close();
+      itemsCatalogNeedsExport=false;
+      updateDataInfo();
+      return true;
+    } catch {
+      itemsCatalogHandle=null;
+      updateDataInfo();
+      return false;
+    }
+  }
+  if (!hasNativeFileSave()) itemsCatalogNeedsExport=true;
+  updateDataInfo();
+  return false;
+}
+
+async function syncItemsCatalogFromFolder() {
+  if (await resolveItemsFileHandle()) {
+    try { await readItemsFile(); } catch { /* keep local */ }
+    await writeItemsFile();
+  }
+  populateSavedItemSelect();
+  updateDataInfo();
+}
+
+function populateSavedItemSelect() {
+  const select=document.getElementById('savedItemSelect');
+  if (!select) return;
+  const current=select.value;
+  select.innerHTML='<option value="">— Choose saved item —</option>';
+  itemsCatalog.items.forEach(item=>{
+    const opt=document.createElement('option');
+    opt.value=item.id;
+    opt.textContent=item.name||item.itemDescription||item.gtin||'Unnamed item';
+    select.appendChild(opt);
+  });
+  if (current&&itemsCatalog.items.some(i=>i.id===current)) select.value=current;
+}
+
+function readFormToSavedItem() {
+  const item={};
+  SAVED_ITEM_FIELDS.forEach(fid=>{ item[fid]=document.getElementById(fid).value; });
+  return item;
+}
+
+function applySavedItemToForm(item) {
+  ['gtin-err','batch-err','weight-err','count-err','itemDescription-err','prodDate-err','bestBefore-err'].forEach(id=>{ document.getElementById(id).textContent=''; });
+  SAVED_ITEM_FIELDS.forEach(fid=>{
+    const el=document.getElementById(fid);
+    if (el) el.value=item[fid]??'';
+  });
+  RUNTIME_ITEM_FIELDS.forEach(fid=>{
+    const el=document.getElementById(fid);
+    if (el) el.value='';
+  });
+}
+
+function onSavedItemSelect() {
+  const id=document.getElementById('savedItemSelect').value;
+  if (!id) return;
+  const item=itemsCatalog.items.find(i=>i.id===id);
+  if (item) applySavedItemToForm(item);
+}
+
+async function saveCurrentItem() {
+  const select=document.getElementById('savedItemSelect');
+  const data=readFormToSavedItem();
+  if (!data.gtin.trim()&&!data.itemDescription.trim()) {
+    document.getElementById('gtin-err').textContent='Enter a description or GTIN before saving.';
+    return;
+  }
+  document.getElementById('gtin-err').textContent='';
+  const now=new Date().toISOString();
+  if (select.value) {
+    const idx=itemsCatalog.items.findIndex(i=>i.id===select.value);
+    if (idx>=0) {
+      itemsCatalog.items[idx]={...itemsCatalog.items[idx],...data,updatedAt:now};
+    }
+  } else {
+    const defaultName=data.itemDescription.trim()||data.gtin.trim();
+    const name=prompt('Save item as:',defaultName);
+    if (!name?.trim()) return;
+    const item={id:createItemId(),name:name.trim(),...data,updatedAt:now};
+    itemsCatalog.items.push(item);
+    itemsCatalog.items.sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
+    select.value=item.id;
+  }
+  await writeItemsFile();
+  populateSavedItemSelect();
+}
+
+async function deleteSelectedItem() {
+  const select=document.getElementById('savedItemSelect');
+  const id=select.value;
+  if (!id) return;
+  const item=itemsCatalog.items.find(i=>i.id===id);
+  if (!item) return;
+  if (!confirm(`Delete saved item "${item.name}"?`)) return;
+  itemsCatalog.items=itemsCatalog.items.filter(i=>i.id!==id);
+  select.value='';
+  await writeItemsFile();
+  populateSavedItemSelect();
+}
+
+function detectDataFileKind(data,fileName) {
+  const name=(fileName||'').toLowerCase();
+  if (name===SSCC_LOG_FILENAME||name.includes('sscc')) return 'sscc';
+  if (name===ITEMS_FILENAME||name.includes('saved-items')||name.includes('items')) return 'items';
+  if (Array.isArray(data?.issued)) return 'sscc';
+  if (Array.isArray(data?.items)) return 'items';
+  return null;
+}
+
+function importDataFiles() {
+  document.getElementById('data-import').click();
+}
+
+async function onDataImported(input) {
+  const files=[...(input.files||[])];
+  input.value='';
+  if (!files.length) return;
+  let importedSscc=false;
+  let importedItems=false;
+  let hadError=false;
+  for (const file of files) {
+    try {
+      const data=JSON.parse(await file.text());
+      const kind=detectDataFileKind(data,file.name);
+      if (kind==='sscc') {
+        ssccLog=mergeSSCCLogData(data,ssccLog);
+        saveSSCCToLocalStorage();
+        ssccLogReady=true;
+        ssccLogNeedsExport=!ssccDirHandle;
+        importedSscc=true;
+      } else if (kind==='items') {
+        itemsCatalog=mergeItemsCatalog(data,itemsCatalog);
+        saveItemsToLocalStorage();
+        itemsCatalogNeedsExport=!ssccDirHandle;
+        importedItems=true;
+      } else {
+        hadError=true;
+      }
+    } catch {
+      hadError=true;
+    }
+  }
+  if (importedSscc||importedItems) {
+    if (ssccDirHandle) {
+      if (!itemsCatalogHandle) await resolveItemsFileHandle();
+      if (importedSscc) await writeSSCCLogFile();
+      if (importedItems) await writeItemsFile();
+    }
+    populateSavedItemSelect();
+    updateDataInfo();
+    document.getElementById('sscc-err').textContent='';
+  }
+  if (hadError) {
+    document.getElementById('sscc-err').textContent=importedSscc||importedItems
+      ? 'Some files could not be read — check that each file is valid JSON.'
+      : 'Could not read files — choose valid JSON (sscc-issued-log.json and/or saved-items.json).';
+  }
+}
+
+async function exportAllData() {
+  if (ssccDirHandle) {
+    await resolveSSCCLogHandle();
+    if (!itemsCatalogHandle) await resolveItemsFileHandle();
+    if (ssccLogHandle&&itemsCatalogHandle) {
+      await writeSSCCLogFile();
+      await writeItemsFile();
+      updateDataInfo();
+      return;
+    }
+  }
+  downloadSSCCLogFile();
+  downloadItemsCatalogFile();
+  ssccLogNeedsExport=false;
+  itemsCatalogNeedsExport=false;
+  updateDataInfo();
+}
+
+async function ensureSSCCLogReady() {
+  if (await resolveSSCCLogHandle()) {
+    if (ssccDirHandle&&!itemsCatalogHandle) await resolveItemsFileHandle();
+    ssccLogReady=true;
+    return null;
+  }
+  if (await restoreDataAccess()) {
+    updateDataInfo();
+    return null;
+  }
+  return connectDataFolder();
+}
+
+function updateDataInfo() {
+  const dataEl=document.getElementById('data-info');
+  const ssccEl=document.getElementById('sscc-log-info');
+  const ssccCount=getSSCCUsedRecords().length;
+  const next=getSSCCCounter();
+  const itemCount=itemsCatalog.items.length;
+  const folderConnected=!!(ssccDirHandle&&ssccLogHandle&&itemsCatalogHandle);
+
+  if (ssccEl) {
+    ssccEl.textContent=ssccCount
+      ? `${ssccCount} SSCC${ssccCount===1?'':'s'} issued · next serial #${next}`
+      : `Next SSCC assigned on Generate · serial #${next}`;
+  }
+
+  if (!dataEl) return;
+
+  if (folderConnected) {
+    dataEl.innerHTML=`Connected folder — both files save automatically.<br><span class="data-files">${SSCC_LOG_FILENAME} · ${ITEMS_FILENAME}</span><br>${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} saved item${itemCount===1?'':'s'}`;
+    return;
+  }
+
+  if (ssccLogHandle&&ssccLogReady&&!ssccDirHandle) {
+    dataEl.innerHTML=`SSCC log linked to <span class="data-files">${ssccLogHandle.name}</span> only — connect a folder so ${ITEMS_FILENAME} saves there too.<br>${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} saved item${itemCount===1?'':'s'} (browser only)`;
+    return;
+  }
+
+  if (!hasNativeFileSave()) {
+    const pending=(ssccLogNeedsExport||itemsCatalogNeedsExport)?' — export to save files':'';
+    dataEl.textContent=`Data stored in browser${pending}. Import JSON files or export when you want backups. ${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} item${itemCount===1?'':'s'}.`;
+    return;
+  }
+
+  dataEl.innerHTML=`Connect a folder once — <span class="data-files">${SSCC_LOG_FILENAME}</span> and <span class="data-files">${ITEMS_FILENAME}</span> both save there.<br>${ssccCount} SSCC${ssccCount===1?'':'s'} · ${itemCount} saved item${itemCount===1?'':'s'} in memory`;
+}
+
+async function initDataStorage() {
+  loadSSCCFromLocalStorage();
+  loadItemsFromLocalStorage();
+  await restoreDataAccess();
+  populateSavedItemSelect();
+  updateDataInfo();
+}
+
+async function registerUsedSSCC(sscc,meta) {
+  const records=getSSCCUsedRecords();
+  if (records.some(r=>r.sscc===sscc)) return false;
+  records.push({
+    sscc,
+    issuedAt:new Date().toISOString(),
+    gtin:meta?.gtin||'',
+    batch:meta?.batch||'',
+  });
+  ssccLog.issued=records;
+  await writeSSCCLogFile();
+  updateDataInfo();
+  return true;
+}
+
+async function assignNewSSCC() {
+  document.getElementById('sscc-err').textContent='';
+  const gtin=document.getElementById('gtin').value.trim();
+  const prefix=derivePrefixFromGtin(gtin);
+  if (!prefix) {
+    const msg='Enter a valid GTIN-14 first — SSCC is built from your company prefix in the GTIN.';
+    document.getElementById('sscc-err').textContent=msg;
+    return msg;
+  }
+  const used=getSSCCUsedSet();
+  let counter=getSSCCCounter();
+  const maxAttempts=100000;
+
+  for (let i=0;i<maxAttempts;i++){
+    const built=composeSSCC(SSCC_EXTENSION,prefix,counter);
+    if (built.error) {
+      document.getElementById('sscc-err').textContent=built.error;
+      return built.error;
+    }
+    counter++;
+    if (!used.has(built.sscc)) {
+      const input=document.getElementById('sscc');
+      input.value=built.sscc;
+      setSSCCCounter(counter);
+      await registerUsedSSCC(built.sscc,{
+        gtin,
+        batch:document.getElementById('batch').value.trim(),
+      });
+      return null;
+    }
+  }
+  const msg='Could not find an unused SSCC — check your log file.';
+  document.getElementById('sscc-err').textContent=msg;
+  return msg;
+}
+
+async function ensureCurrentSSCCSaved() {
+  const raw=document.getElementById('sscc').value.trim();
+  if (!raw) return null;
+  const s=raw.replace(/\D/g,'').padStart(18,'0').slice(0,18);
+  if (!/^\d{18}$/.test(s)||!gs1Mod10(s)) {
+    const msg='Invalid SSCC in field.';
+    document.getElementById('sscc-err').textContent=msg;
+    return msg;
+  }
+  if (!getSSCCUsedSet().has(s)) {
+    await registerUsedSSCC(s,{
+      gtin:document.getElementById('gtin').value.trim(),
+      batch:document.getElementById('batch').value.trim(),
+    });
+  }
+  return null;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderHriHtml(fields) {
+  return fields.map(f=>`<span class="hri-seg">(${escapeHtml(f.ai)})${escapeHtml(f.val)}</span>`).join(' ');
+}
+
+function buildSSCCFromValue(ssccValue) {
+  const errors=[];
+  if (!ssccValue) return {rawData:null,displayStr:'',fields:[],errors:[]};
+
+  const s=String(ssccValue).replace(/\D/g,'').padStart(18,'0').slice(0,18);
+  if (!/^\d{18}$/.test(s)) {
+    errors.push('SSCC must be 18 digits.');
+  } else if (!gs1Mod10(s)) {
+    const exp=calcCheckDigit(s.slice(0,17));
+    errors.push(`SSCC check digit invalid — should end in ${exp}.`);
+  }
+  if (errors.length) return {rawData:null,displayStr:'',fields:[],errors};
+
+  return {
+    rawData:'00'+s,
+    displayStr:'(00)'+s,
+    fields:[{ai:'00',val:s}],
+    errors:[],
+  };
+}
+
+function buildSSCC() {
+  document.getElementById('sscc-err').textContent='';
+  return buildSSCCFromValue(document.getElementById('sscc').value.trim());
+}
+
+function validateRequiredLabelFields() {
+  const missing=[];
+  REQUIRED_LABEL_FIELDS.forEach(({id,label,err})=>{
+    const el=document.getElementById(id);
+    const errEl=document.getElementById(err);
+    if (errEl) errEl.textContent='';
+    const val=(el?.value??'').trim();
+    if (!val) {
+      missing.push(label);
+      if (errEl) errEl.textContent='Required';
+    }
+  });
+  return missing.length?`Fill in required fields: ${missing.join(', ')}.`:null;
+}
+
+function buildBatch() {
+  const batch=document.getElementById('batch').value.trim();
+  const errors=[];
+  document.getElementById('batch-err').textContent='';
+  if (!batch) return {rawData:null,displayStr:'',fields:[],errors:[]};
+
+  const cleaned=stripNonGS182(batch);
+  if (cleaned!==batch) {
+    errors.push('Batch/Lot contains characters outside GS1-82 charset (spaces and special chars not allowed).');
+    document.getElementById('batch-err').textContent='Invalid chars — check GS1-82 charset';
+    return {rawData:null,displayStr:'',fields:[],errors};
+  }
+
+  const val=cleaned.slice(0,20);
+  return {
+    rawData:'10'+val,
+    displayStr:'(10)'+val,
+    fields:[{ai:'10',val}],
+    errors:[],
+  };
+}
+
+function buildProduct() {
+  const gtin=document.getElementById('gtin').value.trim();
+  const prodDate=document.getElementById('prodDate').value;
+  const bestBefore=document.getElementById('bestBefore').value;
+  const useBy=document.getElementById('useBy').value;
+  const netWeight=document.getElementById('netWeight').value.trim();
+  const count=document.getElementById('count').value.trim();
+
+  const errors=[];
+  ['gtin-err','count-err','weight-err'].forEach(id=>document.getElementById(id).textContent='');
+
+  let rawData='',displayStr='';
+  const fields=[];
+
+  if (gtin) {
+    const g=gtin.replace(/\D/g,'').padStart(14,'0').slice(0,14);
+    if (!/^\d{14}$/.test(g)) { errors.push('GTIN must be 14 digits.'); document.getElementById('gtin-err').textContent='Must be 14 digits'; }
+    else if (!luhn14(g)) { const exp=calcCheckDigit(g.slice(0,13)); errors.push(`GTIN check digit invalid — should end in ${exp}.`); document.getElementById('gtin-err').textContent=`Check digit should be ${exp}`; }
+    else { rawData+='02'+g; displayStr+='(02)'+g; fields.push({ai:'02',val:g}); }
+  }
+
+  if (prodDate)   { const d=dateToYYMMDD(prodDate);   rawData+='11'+d; displayStr+='(11)'+d; fields.push({ai:'11',val:d}); }
+  if (bestBefore) { const d=dateToYYMMDD(bestBefore); rawData+='15'+d; displayStr+='(15)'+d; fields.push({ai:'15',val:d}); }
+  if (useBy)      { const d=dateToYYMMDD(useBy);      rawData+='17'+d; displayStr+='(17)'+d; fields.push({ai:'17',val:d}); }
+
+  if (netWeight) {
+    const num=parseFloat(netWeight);
+    if (isNaN(num)||num<0) {
+      errors.push('Invalid net weight.');
+      document.getElementById('weight-err').textContent='Must be a positive number';
+    } else {
+      const enc=String(Math.round(num*100));
+      if (enc.length>6) {
+        errors.push('Net weight exceeds max 9999.99 kg.');
+        document.getElementById('weight-err').textContent='Max 9999.99 kg';
+      } else {
+        const padded=enc.padStart(6,'0');
+        rawData+='3102'+padded; displayStr+='(3102)'+padded; fields.push({ai:'3102',val:padded});
+      }
+    }
+  }
+
+  if (count) {
+    const c=parseInt(count);
+    if (isNaN(c)||c<0) { errors.push('Count must be a positive number.'); document.getElementById('count-err').textContent='Must be a positive number'; }
+    else if (String(c).length>8) { errors.push('Count exceeds 8 digits (GS1 max).'); document.getElementById('count-err').textContent='Max 8 digits per GS1 spec'; }
+    else { rawData+='37'+String(c); displayStr+='(37)'+c; fields.push({ai:'37',val:String(c)}); }
+  }
+
+  if (!rawData) return {rawData:null,displayStr:'',fields:[],errors};
+
+  return {rawData,displayStr,fields,errors};
+}
+
+function buildGS1WithSSCC(ssccValue) {
+  const product=buildProduct();
+  const batch=buildBatch();
+  const sscc=buildSSCCFromValue(ssccValue);
+  return {
+    product,batch,sscc,
+    errors:[...product.errors,...batch.errors,...sscc.errors],
+    hasAny:!!(product.rawData||batch.rawData||sscc.rawData),
+  };
+}
+
+function buildGS1() {
+  return buildGS1WithSSCC(document.getElementById('sscc').value.trim());
+}
+
+function buildLabelHeader(builtLabel) {
+  const title=document.getElementById('itemDescription').value.trim();
+  const rows=[];
+  const gtin=document.getElementById('gtin').value.trim();
+  const batch=document.getElementById('batch').value.trim();
+  const prodDate=document.getElementById('prodDate').value;
+  const bestBefore=document.getElementById('bestBefore').value;
+  const useBy=document.getElementById('useBy').value;
+  const netWeight=document.getElementById('netWeight').value.trim();
+  const count=document.getElementById('count').value.trim();
+
+  if (gtin) rows.push({label:'GTIN-14',value:gtin.replace(/\D/g,'').padStart(14,'0').slice(0,14)});
+  if (batch) rows.push({label:'Batch / Lot',value:batch});
+  if (prodDate) rows.push({label:'Prod. date',value:prodDate});
+  if (bestBefore) rows.push({label:'Best before',value:bestBefore});
+  if (useBy) rows.push({label:'Use-by',value:useBy});
+  if (netWeight) {
+    const num=parseFloat(netWeight);
+    if (!isNaN(num)) rows.push({label:'Net weight',value:`${num} kg`});
+  }
+  if (count) rows.push({label:'Count',value:String(parseInt(count,10))});
+  if (builtLabel?.sscc?.fields?.[0]?.val) {
+    rows.push({label:'SSCC',value:builtLabel.sscc.fields[0].val});
+  }
+  return {title,rows};
+}
+
+function renderLabelHeaderHtml(header) {
+  if (!header||(!header.title&&!header.rows.length)) return '';
+  const title=header.title?`<div class="label-title">${escapeHtml(header.title)}</div>`:'';
+  const meta=header.rows.length
+    ? `<dl class="label-meta">${header.rows.map(r=>`<dt>${escapeHtml(r.label)}</dt><dd>${escapeHtml(r.value)}</dd>`).join('')}</dl>`
+    : '';
+  return `<div class="label-header">${title}${meta}</div><div class="barcode-divider"></div>`;
+}
+
+function getLabelSizeMm() {
+  const preset=document.getElementById('labelSizePreset').value;
+  if (preset!=='custom'&&LABEL_SIZE_PRESETS[preset]) {
+    const p=LABEL_SIZE_PRESETS[preset];
+    return {w:p.w,h:p.h,page:p.page,preset};
+  }
+  // ZT420 hardware limits: min 51 mm, max 168 mm print width
+  const w=Math.min(168,Math.max(51,parseInt(document.getElementById('labelWidthMm').value,10)||147));
+  const h=Math.max(20,parseInt(document.getElementById('labelHeightMm').value,10)||209);
+  return {w,h,page:`${w}mm ${h}mm`,preset:'custom'};
+}
+
+function onLabelSizePresetChange() {
+  const preset=document.getElementById('labelSizePreset').value;
+  const wEl=document.getElementById('labelWidthMm');
+  const hEl=document.getElementById('labelHeightMm');
+  const custom=preset==='custom';
+  wEl.disabled=!custom;
+  hEl.disabled=!custom;
+  if (!custom&&LABEL_SIZE_PRESETS[preset]) {
+    wEl.value=String(LABEL_SIZE_PRESETS[preset].w);
+    hEl.value=String(LABEL_SIZE_PRESETS[preset].h);
+  }
+  applyLabelSizePreview();
+}
+
+function onLabelSizeCustom() {
+  document.getElementById('labelSizePreset').value='custom';
+  document.getElementById('labelWidthMm').disabled=false;
+  document.getElementById('labelHeightMm').disabled=false;
+  applyLabelSizePreview();
+}
+
+function getPrinterDpi() {
+  const el=document.getElementById('printerDpi');
+  return el?parseInt(el.value,10)||203:203;
+}
+
+// ZT420: when DPI changes, suggest a matching bar width so the physical bar
+// width stays close to the GS1-128 minimum (0.495 mm X-dimension).
+// At 203 dpi: 1 dot ≈ 0.125 mm; 4 dots ≈ 0.50 mm (≥ X min)
+// At 300 dpi: 1 dot ≈ 0.0847 mm; 6 dots ≈ 0.508 mm (≥ X min)
+function onPrinterDpiChange() {
+  const dpi=getPrinterDpi();
+  const barWidthEl=document.getElementById('barWidth');
+  if (dpi===300) {
+    barWidthEl.value='3';   // 3 dots @ 300 dpi ≈ 0.254 mm per bar (compact); use 4 for safer scan
+  } else {
+    barWidthEl.value='2';   // 2 dots @ 203 dpi ≈ 0.25 mm — tight but common default
+  }
+  applyLabelSizePreview();
+}
+
+function mmToPx(mm) {
+  return mm*96/25.4;
+}
+
+function getLabelTextSizes() {
+  const meta=Math.min(48,Math.max(8,parseInt(document.getElementById('labelTextSize').value,10)||30));
+  const title=Math.min(60,Math.max(10,Math.round(meta*1.25)));
+  return {meta,title};
+}
+
+function applyLabelHeaderFontSizes() {
+  const {meta,title}=getLabelTextSizes();
+  document.querySelectorAll('.label-header').forEach(el=>{
+    el.style.setProperty('--label-title-size',`${title}px`);
+    el.style.setProperty('--label-meta-size',`${meta}px`);
+  });
+}
+
+function estimateHeaderHeightPx(header) {
+  if (!header||(!header.title&&!header.rows.length)) return 0;
+  const {meta,title}=getLabelTextSizes();
+  let hp=8;
+  if (header.title) hp+=title*1.25+4;
+  hp+=header.rows.length*Math.ceil(meta*1.35);
+  hp+=10;
+  return hp;
+}
+
+function computeAdaptiveBarcodeOpts(headers,labels) {
+  const {h}=getLabelSizeMm();
+  const showText=document.getElementById('showText').checked;
+  const userBarWidth=parseFloat(document.getElementById('barWidth').value)||2;
+  const userBarHeight=parseInt(document.getElementById('barHeight').value)||80;
+  const userFontSize=parseInt(document.getElementById('fontSize').value)||14;
+  const maxHeightPx=mmToPx(Math.max(20,h-4));
+
+  let maxHeaderPx=0;
+  headers.forEach(hdr=>{ maxHeaderPx=Math.max(maxHeaderPx,estimateHeaderHeightPx(hdr)); });
+
+  let maxBarcodes=0;
+  labels.forEach(label=>{
+    maxBarcodes=Math.max(maxBarcodes,BARCODE_ORDER.filter(k=>label[k].rawData).length);
+  });
+  if (!maxBarcodes) maxBarcodes=1;
+
+  const dividerPx=Math.max(0,maxBarcodes)*4;
+  const marginPx=12;
+  const hriPx=showText?userFontSize+14:0;
+  const rowPad=4;
+  const available=maxHeightPx-maxHeaderPx-dividerPx-maxBarcodes*(hriPx+rowPad+marginPx);
+  let barHeight=Math.floor(available/maxBarcodes);
+  barHeight=Math.max(18,Math.min(userBarHeight,barHeight));
+
+  let fontSize=userFontSize;
+  if (barHeight<=32&&showText) fontSize=Math.max(7,Math.min(fontSize,9));
+  else if (barHeight<=48&&showText) fontSize=Math.max(8,Math.min(fontSize,11));
+
+  return {barWidth:userBarWidth,barHeight,fontSize,margin:6};
+}
+
+function getLabelCopies() {
+  return Math.min(10,Math.max(1,parseInt(document.getElementById('labelCopies').value,10)||1));
+}
+
+function expandLabelSets(labels,headers,copies) {
+  const outLabels=[],outHeaders=[];
+  labels.forEach((label,i)=>{
+    for (let c=0;c<copies;c++) {
+      outLabels.push(label);
+      outHeaders.push(headers[i]);
+    }
+  });
+  return {labels:outLabels,headers:outHeaders};
+}
+
+function renderLabelPreview(labels,headers,showText) {
+  const preview=document.getElementById('barcode-preview');
+  preview.innerHTML=labels.map((label,idx)=>{
+    const activeKeys=BARCODE_ORDER.filter(k=>label[k].rawData);
+    return renderLabelSheet(idx,activeKeys,showText,headers[idx]);
+  }).join('');
+  applyLabelHeaderFontSizes();
+}
+
+function refreshLabelCopies() {
+  if (!lastUniqueBuiltLabels.length) return;
+  const copies=getLabelCopies();
+  document.getElementById('labelCopies').value=String(copies);
+  const expanded=expandLabelSets(lastUniqueBuiltLabels,lastUniqueHeaders,copies);
+  renderLabelPreview(expanded.labels,expanded.headers,lastShowText);
+  applyLabelSizePreview();
+  try {
+    const opts=lastBarcodeOpts||computeAdaptiveBarcodeOpts(lastUniqueHeaders,lastUniqueBuiltLabels);
+    lastBuiltLabels=expanded.labels;
+    lastLabelHeaders=expanded.headers;
+    lastBarcodeOpts=fitLabelsToPage(expanded.labels,expanded.headers,lastShowText,opts);
+  } catch {
+    document.getElementById('gen-actions').style.display='none';
+  }
+}
+
+function applyLabelSizePreview() {
+  applyLabelDimensions();
+  const source=lastBuiltLabels.length?lastBuiltLabels:lastUniqueBuiltLabels;
+  const headers=lastLabelHeaders.length?lastLabelHeaders:lastUniqueHeaders;
+  if (source.length) {
+    const opts=computeAdaptiveBarcodeOpts(
+      lastUniqueHeaders.length?lastUniqueHeaders:headers,
+      lastUniqueBuiltLabels.length?lastUniqueBuiltLabels:source,
+    );
+    lastBarcodeOpts=fitLabelsToPage(source,headers,lastShowText,opts);
+  } else {
+    applyCompactHeaderClasses();
+  }
+}
+
+function applyLabelDimensions() {
+  const {w,h}=getLabelSizeMm();
+  document.querySelectorAll('.label-sheet').forEach(el=>{
+    el.style.width=`${w}mm`;
+    el.style.height=`${h}mm`;
+    el.style.minHeight=`${h}mm`;
+    el.style.maxHeight=`${h}mm`;
+    el.style.maxWidth=`${w}mm`;
+    el.style.margin='0 auto';
+  });
+}
+
+function measureLabelsOverflow() {
+  let overflow=false;
+  document.querySelectorAll('.label-sheet').forEach(sheet=>{
+    const fit=sheet.querySelector('.label-fit');
+    if (!fit) return;
+    if (fit.scrollHeight>sheet.clientHeight+2||fit.scrollWidth>sheet.clientWidth+2) overflow=true;
+  });
+  return overflow;
+}
+
+function applyCompactHeaderClasses() {
+  document.querySelectorAll('.label-sheet').forEach(sheet=>{
+    const fit=sheet.querySelector('.label-fit');
+    if (!fit) return;
+    const meta=fit.querySelector('.label-meta');
+    const title=fit.querySelector('.label-title');
+    const compact=meta&&meta.querySelectorAll('dt').length>6;
+    if (meta) meta.classList.toggle('label-meta-compact',compact);
+    if (title) title.classList.toggle('label-title-compact',compact);
+  });
+  applyLabelHeaderFontSizes();
+}
+
+function renderEncodedLabels(labels,opts,showText) {
+  labels.forEach((label,idx)=>{
+    BARCODE_ORDER.filter(k=>label[k].rawData).forEach(k=>{
+      encodeBarcode(`barcodesvg-${idx}-${k}`,label[k].rawData,opts);
+    });
+  });
+  if (showText) {
+    labels.forEach((label,idx)=>{
+      BARCODE_ORDER.filter(k=>label[k].rawData).forEach(k=>{
+        const hri=document.getElementById(`barcode-hri-${idx}-${k}`);
+        if (!hri) return;
+        hri.style.fontSize=opts.fontSize+'px';
+        hri.innerHTML=renderHriHtml(label[k].fields);
+      });
+    });
+  }
+}
+
+function fitLabelsToPage(labels,headers,showText,startOpts) {
+  let opts={...startOpts};
+  applyLabelDimensions();
+  applyCompactHeaderClasses();
+
+  for (let i=0;i<15;i++){
+    renderEncodedLabels(labels,opts,showText);
+    applyLabelDimensions();
+    applyCompactHeaderClasses();
+    if (!measureLabelsOverflow()) return opts;
+    opts={
+      barWidth:Math.max(0.8,opts.barWidth-0.15),
+      barHeight:Math.max(14,opts.barHeight-3),
+      fontSize:Math.max(6,Math.round(opts.fontSize-1)),
+      margin:Math.max(2,Math.round((opts.margin||6)-1)),
+    };
+  }
+  return opts;
+}
+
+function fitLabelSheets() {
+  applyLabelDimensions();
+  applyCompactHeaderClasses();
+}
+
+function printLabels() {
+  if (!lastLabels.length) return;
+  if (lastBuiltLabels.length&&lastBarcodeOpts) {
+    fitLabelsToPage(lastBuiltLabels,lastLabelHeaders,lastShowText,lastBarcodeOpts);
+  } else {
+    fitLabelSheets();
+  }
+  const {page}=getLabelSizeMm();
+  let style=document.getElementById('print-page-size');
+  if (!style) {
+    style=document.createElement('style');
+    style.id='print-page-size';
+    document.head.appendChild(style);
+  }
+  style.textContent=`@page{size:${page};margin:0}`;
+  window.print();
+}
+
+function renderBarcodeRow(labelIdx,key,showText) {
+  const hri=showText?`<div class="hri-text" id="barcode-hri-${labelIdx}-${key}"></div>`:'';
+  return `<div class="barcode-row"><div class="barcode-stack"><svg id="barcodesvg-${labelIdx}-${key}"></svg>${hri}</div></div>`;
+}
+
+function renderLabelSheet(labelIdx,keys,showText,header) {
+  const headerHtml=renderLabelHeaderHtml(header);
+  const barcodeHtml=keys.map((k,i)=>(i?'<div class="barcode-divider"></div>':'')+renderBarcodeRow(labelIdx,k,showText)).join('');
+  return `<div class="label-sheet"><div class="label-fit">${headerHtml}${barcodeHtml}</div></div>`;
+}
+
+function encodeBarcode(svgId,rawData,opts) {
+  JsBarcode('#'+svgId,rawData,{
+    format:'CODE128',ean128:true,width:opts.barWidth,height:opts.barHeight,
+    displayValue:false,
+    fontSize:opts.fontSize,font:'monospace',textMargin:2,margin:opts.margin??6,
+    background:'transparent',lineColor:'currentColor',
+  });
+}
+
+async function generate() {
+  const errBox=document.getElementById('gen-error');
+  errBox.style.display='none';
+  document.getElementById('sscc-err').textContent='';
+
+  const requiredErr=validateRequiredLabelFields();
+  if (requiredErr) {
+    errBox.textContent=requiredErr;
+    errBox.style.display='block';
+    return;
+  }
+
+  const logErr=await ensureSSCCLogReady();
+  if (logErr) { errBox.textContent=logErr; errBox.style.display='block'; return; }
+
+  const labelCount=Math.min(50,Math.max(1,parseInt(document.getElementById('labelCount').value,10)||1));
+  document.getElementById('labelCount').value=String(labelCount);
+
+  const productProbe=buildProduct();
+  const batchProbe=buildBatch();
+  const probeErrors=[...productProbe.errors,...batchProbe.errors];
+  if (probeErrors.length) {
+    errBox.textContent=probeErrors.join(' ');
+    errBox.style.display='block';
+    return;
+  }
+
+  const labels=[];
+  for (let i=0;i<labelCount;i++) {
+    if (i===0&&document.getElementById('sscc').value.trim()) {
+      const saveErr=await ensureCurrentSSCCSaved();
+      if (saveErr) { errBox.textContent=saveErr; errBox.style.display='block'; return; }
+    } else {
+      const assignErr=await assignNewSSCC();
+      if (assignErr) { errBox.textContent=assignErr; errBox.style.display='block'; return; }
+    }
+    const ssccVal=document.getElementById('sscc').value.trim();
+    const built=buildGS1WithSSCC(ssccVal);
+    if (built.errors.length) {
+      errBox.textContent=built.errors.join(' ');
+      errBox.style.display='block';
+      return;
+    }
+    labels.push(built);
+  }
+
+  const showText=document.getElementById('showText').checked;
+  const uniqueHeaders=labels.map(label=>buildLabelHeader(label));
+  let copies=getLabelCopies();
+  const maxTotal=100;
+  if (labelCount*copies>maxTotal) {
+    copies=Math.max(1,Math.floor(maxTotal/labelCount));
+    document.getElementById('labelCopies').value=String(copies);
+  }
+  document.getElementById('labelCopies').value=String(copies);
+  const expanded=expandLabelSets(labels,uniqueHeaders,copies);
+  const opts=computeAdaptiveBarcodeOpts(uniqueHeaders,labels);
+
+  lastUniqueBuiltLabels=labels;
+  lastUniqueHeaders=uniqueHeaders;
+  lastShowText=showText;
+
+  renderLabelPreview(expanded.labels,expanded.headers,showText);
+  applyLabelDimensions();
+
+  try {
+    lastBuiltLabels=expanded.labels;
+    lastLabelHeaders=expanded.headers;
+    lastBarcodeOpts=fitLabelsToPage(expanded.labels,expanded.headers,showText,opts);
+  } catch(e) {
+    document.getElementById('barcode-preview').innerHTML=`<div class="empty-state" style="color:var(--color-text-danger)">Encoding error: ${e.message}</div>`;
+    document.getElementById('gen-actions').style.display='none';
+    return;
+  }
+
+  lastLabels=labels.map(label=>({
+    product:label.product.rawData?label.product:null,
+    batch:label.batch.rawData?label.batch:null,
+    sscc:label.sscc.rawData?label.sscc:null,
+  }));
+  lastLabelHeaders=expanded.headers;
+  lastBarcodes=lastLabels[0]||{product:null,batch:null,sscc:null};
+  document.getElementById('gen-actions').style.display='flex';
+
+  const nextErr=await assignNewSSCC();
+  if (nextErr) document.getElementById('sscc-err').textContent=nextErr;
+}
+
+function sendToVerifier() {
+  const lines=lastLabels.flatMap(label=>BARCODE_ORDER.filter(k=>label[k]).map(k=>label[k].displayStr));
+  if (!lines.length) return;
+  document.getElementById('verifyInput').value=lines.join('\n');
+  switchTab('verify'); decode();
+}
+
+function copyDS() {
+  const lines=lastLabels.flatMap(label=>BARCODE_ORDER.filter(k=>label[k]).map(k=>label[k].displayStr));
+  if (!lines.length) return;
+  const btn=document.getElementById('copy-btn');
+  const defaultHtml='<i class="ti ti-copy" aria-hidden="true"></i> Copy data strings';
+  copyToClipboard(lines.join('\n')).then(()=>{
+    btn.innerHTML='<i class="ti ti-check" aria-hidden="true"></i> Copied!';
+    setTimeout(()=>{btn.innerHTML=defaultHtml;},1500);
+  }).catch(()=>{
+    btn.innerHTML='<i class="ti ti-alert-circle" aria-hidden="true"></i> Copy failed';
+    setTimeout(()=>{btn.innerHTML=defaultHtml;},2500);
+  });
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  return new Promise((resolve,reject)=>{
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.style.position='fixed';
+    ta.style.left='-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy') ? resolve() : reject(new Error('Copy failed'));
+    } catch (e) { reject(e); }
+    finally { document.body.removeChild(ta); }
+  });
+}
+
+function fillExampleFields() {
+  document.getElementById('sscc').value='';
+  document.getElementById('itemDescription').value=EXAMPLE.itemDescription;
+  document.getElementById('gtin').value=EXAMPLE.gtin;
+  document.getElementById('batch').value=EXAMPLE.batch;
+  document.getElementById('prodDate').value=EXAMPLE.prodDate;
+  document.getElementById('bestBefore').value=EXAMPLE.bestBefore;
+  document.getElementById('useBy').value=EXAMPLE.useBy;
+  document.getElementById('netWeight').value=EXAMPLE.netWeight;
+  document.getElementById('count').value=EXAMPLE.count;
+}
+
+async function loadExample() {
+  fillExampleFields();
+  await generate();
+}
+
+function barcodeIcon(title) {
+  if (title==='Product') return 'ti-package';
+  if (title==='Batch / Lot') return 'ti-hash';
+  if (title==='SSCC') return 'ti-truck';
+  return 'ti-barcode';
+}
+
+function collectFieldIssues(fields) {
+  const issues=[];
+  fields.forEach(f=>validateField(f.ai,f.val).forEach(i=>issues.push({...i,ctx:`AI ${f.ai} (${f.def.name})`})));
+  return issues;
+}
+
+function buildFieldRowsHtml(fields) {
+  let html='';
+  fields.forEach(f=>{
+    const fi=validateField(f.ai,f.val);
+    const hasErr=fi.some(i=>i.sev==='err'),hasWarn=fi.some(i=>i.sev==='warn');
+    html+=`<div class="result-row"><span class="ai-tag">${f.ai}</span><span class="fname">${f.def.name}</span><span class="fval">${formatValue(f.ai,f.val)}</span><span class="badge ${hasErr?'b-err':hasWarn?'b-warn':'b-ok'}">${hasErr?'error':hasWarn?'warning':'ok'}</span></div>`;
+    fi.forEach(i=>{html+=`<div class="verify-field-note ${i.sev}">${i.msg}</div>`;});
+  });
+  return html;
+}
+
+function buildBarcodeCard({title,fields,line}) {
+  const issues=collectFieldIssues(fields);
+  const errs=issues.filter(i=>i.sev==='err');
+  const warns=issues.filter(i=>i.sev==='warn');
+  const badgeClass=errs.length?'b-err':warns.length?'b-warn':'b-ok';
+  const statusLabel=errs.length?'Invalid':warns.length?'Review':'Valid';
+  let html=`<div class="verify-barcode">`;
+  html+=`<div class="verify-barcode-head"><span class="verify-barcode-title"><i class="ti ${barcodeIcon(title)}" aria-hidden="true"></i> ${title}</span><span class="badge ${badgeClass}">${statusLabel}</span></div>`;
+  if (!fields.length) {
+    html+=`<div class="verify-empty">No GS1 AIs recognised — check the format.</div>`;
+  } else {
+    html+=`<div class="verify-fields">${buildFieldRowsHtml(fields)}</div>`;
+    html+=`<div class="verify-raw">${fields.map(f=>`(${f.ai})${f.val}`).join('')}</div>`;
+  }
+  html+=`</div>`;
+  return {html,issues};
+}
+
+function buildVerifyOutput(barcodes) {
+  const cards=barcodes.map(b=>{
+    const fields=parseFields(b.line);
+    const title=barcodeTitleFromFields(fields);
+    const card=buildBarcodeCard({title,fields,line:b.line});
+    return {...card,title,fields};
+  });
+  const allIssues=cards.flatMap(c=>c.issues);
+  const allFields=cards.flatMap(c=>c.fields);
+  const errs=allIssues.filter(i=>i.sev==='err');
+  const warns=allIssues.filter(i=>i.sev==='warn');
+  let html=`<div class="summary-grid">
+    <div class="stat"><div class="stat-label">Barcodes</div><div class="stat-val">${cards.length}</div></div>
+    <div class="stat"><div class="stat-label">Fields</div><div class="stat-val">${allFields.length}</div></div>
+    <div class="stat"><div class="stat-label">Errors</div><div class="stat-val" style="color:${errs.length?'var(--color-text-danger)':'var(--color-text-success)'}">${errs.length}</div></div>
+    <div class="stat"><div class="stat-label">Status</div><div class="stat-val" style="font-size:14px;padding-top:5px;color:${errs.length?'var(--color-text-danger)':warns.length?'var(--color-text-warning)':'var(--color-text-success)'}">${errs.length?'Invalid':warns.length?'Review':'Valid ✓'}</div></div>
+  </div>`;
+  if (!allFields.length) {
+    html+=`<div class="section verify-empty-msg"><i class="ti ti-alert-circle" aria-hidden="true"></i> No GS1 AIs recognised. Check the format.</div>`;
+    return html;
+  }
+  html+=`<div class="section">`;
+  if (cards.length>1) {
+    html+=`<div class="sec-title"><i class="ti ti-scan" aria-hidden="true"></i> Decoded barcodes</div>`;
+    html+=`<div class="verify-barcode-grid">${cards.map(c=>c.html).join('')}</div>`;
+  } else {
+    html+=cards[0].html;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+function decode() {
+  const raw=document.getElementById('verifyInput').value;
+  const out=document.getElementById('verify-output');
+  if (!raw.trim()){out.innerHTML='';return;}
+  const lines=splitVerifyInput(raw);
+  out.innerHTML=buildVerifyOutput(lines.map(line=>({line})));
+}
+
+async function loadVerifyExample(){
+  fillExampleFields();
+  await ensureSSCCLogReady();
+  await assignNewSSCC();
+  const {product,batch,sscc,errors}=buildGS1();
+  if (errors.length) return;
+  const lines=BARCODE_ORDER.map(k=>({product,batch,sscc}[k])).filter(b=>b.rawData).map(b=>b.displayStr);
+  if (!lines.length) return;
+  document.getElementById('verifyInput').value=lines.join('\n');
+  decode();
+}
+function clearVerify(){document.getElementById('verifyInput').value='';document.getElementById('verify-output').innerHTML='';}
+async function initApp() {
+  initGS1Core();
+  await initDataStorage();
+}
+initApp();
+onLabelSizePresetChange();
+onPrinterDpiChange();
+</script>
+</body>
+</html>
