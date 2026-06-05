@@ -4,7 +4,7 @@ Browser-based tool for generating and validating GS1-128 barcodes on food produc
 
 No build step or server required — open `index.html` in **Chrome or Edge** (or another Chromium-based browser) so data can be saved to disk.
 
-**Requires a Chromium-based browser** for **Connect folder** and JSON file saving. You can generate and verify labels in other browsers, but SSCC logs and saved items will not persist to `sscc-issued-log.json` and `saved-items.json`.
+**Requires a Chromium-based browser** for **Connect folder** and JSON file saving. You can generate and verify labels in other browsers, but SSCC logs and saved items will not be written to `sscc-issued-log.json` and `saved-items.json` on disk.
 
 ## Features
 
@@ -18,12 +18,16 @@ No build step or server required — open `index.html` in **Chrome or Edge** (or
 - **Batch production** — generate up to 50 labels, each with a unique SSCC
 - **Saved items** — store and reload product presets (GTIN, weight, count, description)
 - **Print layout** — label size presets, DPI/bar sizing for Zebra ZT420, human-readable text (HRI), optional SSCC barcode/header, and a print stylesheet that outputs one label per page
+- **Verify label** — send generated data strings to the Verify tab for decoding
+- **Copy data strings** — copy raw GS1 strings to the clipboard
 
 SSCCs are always assigned and logged when you generate, even if **Include SSCC on label** is unchecked.
 
 ### Verify / decode
 
 Paste scanner output or `(AI)value` notation. The verifier parses FNC1-separated strings, decodes application identifiers, and flags errors and warnings (check digits, date formats, GS1-82 charset, length limits).
+
+**Scan from photo** — on the Verify tab, upload or drag-and-drop a label photo to decode CODE128 barcodes (JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF). Works offline when you open `index.html` directly; no local server. Chrome or Edge recommended; on mobile you can take a photo with the device camera. For best results, crop the photo to a single barcode; full labels with three barcodes may need several tries or better lighting.
 
 ### Data persistence
 
@@ -34,7 +38,11 @@ Paste scanner output or `(AI)value` notation. The verifier parses FNC1-separated
 
 Use **Connect folder** in a Chromium-based browser (Chrome, Edge, etc.) to read and write these files via the [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API). The SSCC log saves automatically on each generate; saved items save when you click **Save** or **Delete** in the preset list.
 
-This is the only supported way to persist data. Non-Chromium browsers cannot use Connect folder; any data in `localStorage` is browser-local and is not written to the JSON files.
+The connected folder is remembered across reloads via **IndexedDB** (no need to reconnect every session, as long as the browser still has permission).
+
+If directory picking is unavailable, the app can fall back to linking **only** `sscc-issued-log.json` via a file picker — saved items then stay in the browser until you connect a full folder.
+
+**Browser-only fallback:** when the File System Access API is not available, SSCC logs and saved items are stored in `localStorage` for that browser profile. Data survives reloads in the same browser but is **not** written to the JSON files and does not sync across browsers or machines.
 
 ## Quick start
 
@@ -42,7 +50,7 @@ This is the only supported way to persist data. Non-Chromium browsers cannot use
 2. Open `index.html` in **Chrome or Edge** (required for saving data to disk).
 3. Click **Connect folder** and choose a directory for the JSON data files (existing `sscc-issued-log.json` and `saved-items.json` in that folder are loaded automatically).
 4. Fill in product fields (or use **Load example**), then click **Generate barcodes**.
-5. Use **Print labels** or copy data strings as needed.
+5. Use **Print labels**, **Verify label**, or **Copy data strings** as needed.
 
 ## Required fields
 
@@ -60,12 +68,15 @@ Optional: use-by date, net weight (kg). SSCC is assigned automatically from the 
 ## Project structure
 
 ```
-Barcode/
+.
 ├── index.html                # Single-page app (UI + storage + rendering)
+├── favicon.svg               # App icon
 ├── sscc-issued-log.json      # Example / starter SSCC log (empty)
 ├── saved-items.json          # Example / starter saved-items catalog (empty)
 ├── lib/
 │   ├── gs1-core.js           # Pure GS1-128 logic (no DOM; usable in Node)
+│   ├── barcode-scan.js       # Photo CODE128 scanner wrapper
+│   ├── zbar-wasm-inlined.js  # ZBar WASM (inlined, file:// safe)
 │   ├── jsbarcode/            # JsBarcode (CODE128 rendering)
 │   └── tabler-icons/         # Tabler Icons (UI)
 └── README.md
@@ -75,8 +86,9 @@ Barcode/
 
 | Feature | Requirement |
 |---------|-------------|
-| **Saving data (SSCC log, saved items)** | **Chromium-based browser** with [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API) — **Chrome or Edge** |
-| Generate / verify labels | Same as above for normal use; other browsers may run the UI but **cannot save to JSON files** |
+| **Saving data to JSON files** | **Chromium-based browser** with [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API) — **Chrome or Edge** |
+| Generate / verify labels | Works in any modern browser; without Chromium, data stays in `localStorage` only |
+| **Photo scan (Verify tab)** | **Chrome or Edge** — WASM + `createImageBitmap` EXIF orientation; works on `file://` |
 | Clipboard copy | Secure context (`https://` or `http://localhost`) for the Clipboard API; falls back to legacy copy otherwise |
 
 ## Dependencies
@@ -84,6 +96,7 @@ Barcode/
 Third-party libraries are vendored under `lib/`:
 
 - [JsBarcode](https://github.com/lindell/JsBarcode) — barcode rendering
+- [@undecaf/zbar-wasm](https://github.com/undecaf/zbar-wasm) — CODE128 photo scanning (LGPL-2.1)
 - [Tabler Icons](https://tabler.io/icons) — UI icons
 
 GS1 encoding, validation, and parsing live in `lib/gs1-core.js`.
