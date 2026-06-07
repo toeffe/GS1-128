@@ -176,6 +176,7 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
 .verify-scan-input-row button{flex:1 1 auto;min-width:0;justify-content:center}
 .verify-photo-input-hidden{opacity:0;position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 #scan-photo-btn{flex-shrink:0;white-space:nowrap}
+#verify-take-photo-btn{display:none}
 .verify-scan-drop{cursor:pointer}
 .verify-scan-preview{display:none;max-width:100%;max-height:180px;margin-bottom:8px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md)}
 .verify-scan-preview.visible{display:block}
@@ -184,12 +185,16 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
 #scan-status.err{color:var(--color-text-danger)}
 #scan-status.pending{color:var(--color-text-secondary)}
 .hint-mobile{display:none}
+.verify-choose-label-mobile{display:none}
 @media (max-width:640px){
+  .verify-choose-label-desktop{display:none}
+  .verify-choose-label-mobile{display:inline}
   .grid2,.grid3{grid-template-columns:1fr}
   .summary-grid{grid-template-columns:repeat(2,1fr)}
   .barcode-preview-wrap{overflow-x:hidden;align-items:center}
   .btn-row button{flex:1 1 calc(50% - 4px);min-width:min(100%,9rem);justify-content:center}
   .actions .act-btn{flex:1 1 calc(50% - 4px);min-width:min(100%,7.5rem)}
+  #verify-take-photo-btn{display:flex}
   .verify-scan-input-row button{flex:1 1 calc(50% - 4px);min-width:min(100%,9rem)}
   #scan-photo-btn{flex:1 1 100%}
   .verify-barcode-head{flex-wrap:wrap}
@@ -406,11 +411,11 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
     <div class="field" style="margin:0;margin-bottom:10px">
       <div class="verify-scan-input-row">
         <button type="button" id="verify-take-photo-btn" onclick="openVerifyPhotoPicker({capture:true})"><i class="ti ti-camera" aria-hidden="true"></i> Take photo</button>
-        <button type="button" id="verify-choose-photo-btn" onclick="openVerifyPhotoPicker({capture:false})"><i class="ti ti-photo" aria-hidden="true"></i> Choose photo</button>
+        <button type="button" id="verify-choose-photo-btn" onclick="openVerifyPhotoPicker({capture:false})"><i class="ti ti-photo" aria-hidden="true"></i><span class="verify-choose-label-desktop">Upload photo</span><span class="verify-choose-label-mobile">Choose photo</span></button>
         <input type="file" id="verifyPhotoInput" accept="image/*" class="verify-photo-input-hidden" tabindex="-1" aria-hidden="true" onchange="onVerifyPhotoSelect()" />
         <button type="button" id="scan-photo-btn" onclick="onScanLabelPhoto()" disabled><i class="ti ti-scan" aria-hidden="true"></i> Scan photo</button>
       </div>
-      <div class="hint"><span class="hint-desktop">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · drag and drop or use the buttons above</span><span class="hint-mobile">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · tap Take photo, Choose photo, or anywhere in this area</span></div>
+      <div class="hint"><span class="hint-desktop">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · drag and drop or Upload photo</span><span class="hint-mobile">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · Take photo opens Camera (Android: pick Camera in the list), Choose photo opens gallery, or tap this area</span></div>
     </div>
     <img id="verifyPhotoPreview" class="verify-scan-preview" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
     <div id="scan-status" class="pending" aria-live="polite"></div>
@@ -2397,6 +2402,22 @@ function onVerifyPhotoSelect() {
   setVerifyPhotoFile(input.files&&input.files[0]);
 }
 
+function configureVerifyPhotoPickerInput(input,capture) {
+  input.removeAttribute('capture');
+  if (!capture) {
+    input.accept='image/*';
+    return;
+  }
+  if (/Android/i.test(navigator.userAgent)) {
+    // capture=environment silently fails on many Android Chrome builds (incl. Android 14+).
+    // Non-standard MIME restores the Camera option in the system picker.
+    input.accept='image/*,android/allowCamera';
+    return;
+  }
+  input.accept='image/*';
+  input.setAttribute('capture','environment');
+}
+
 function openVerifyPhotoPicker(options) {
   const capture=!!(options&&options.capture);
   if (!document.getElementById('panel-verify').classList.contains('active')) {
@@ -2404,17 +2425,18 @@ function openVerifyPhotoPicker(options) {
   }
   const input=document.createElement('input');
   input.type='file';
-  input.accept='image/*';
-  input.style.cssText='opacity:0;position:absolute;width:0;height:0;overflow:hidden';
-  if (capture) input.setAttribute('capture','environment');
+  configureVerifyPhotoPickerInput(input,capture);
+  input.style.cssText='position:fixed;top:-100px;left:-100px;width:1px;height:1px;opacity:0.01;overflow:hidden';
+  const cleanup=()=>{ input.remove(); };
   input.addEventListener('change',()=>{
     const file=input.files&&input.files[0];
     if (file) {
       verifyPhotoAutoScan=true;
       setVerifyPhotoFile(file);
     }
-    input.remove();
+    cleanup();
   },{once:true});
+  input.addEventListener('cancel',cleanup,{once:true});
   document.body.appendChild(input);
   input.click();
 }
