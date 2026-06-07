@@ -40,7 +40,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--color-backg
 .tab:last-child{border-right:none}
 .tab.active{background:var(--color-background-secondary);color:var(--color-text-primary)}
 .tab:hover:not(.active){background:var(--color-background-secondary)}
-.panel{display:none}.panel.active{display:block}
+.panel:not(.active){visibility:hidden;position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+.panel.active{visibility:visible;position:static;width:auto;height:auto;overflow:visible;pointer-events:auto}
 .section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:10px}
 .sec-title{font-size:12px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .section-collapse{padding:0}
@@ -110,7 +111,7 @@ button:active{transform:scale(.98)}
   html,body{height:auto;margin:0!important;padding:0!important;overflow:visible;background:#fff}
   body{max-width:none}
   .tabs,.section,.btn-row,.actions,.gen-err,.sr-only,#panel-verify{display:none!important}
-  #panel-gen.panel{display:block!important}
+  #panel-gen.panel,#panel-gen.panel.active{display:block!important;visibility:visible!important;position:static!important;width:auto!important;height:auto!important;overflow:visible!important;pointer-events:auto!important}
   .wrap,.barcode-preview-wrap{margin:0!important;padding:0!important;gap:0!important}
   .label-sheet{
     border:none;border-radius:0;box-shadow:none;margin:0!important;padding:2mm;
@@ -171,9 +172,11 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
 .verify-raw{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--color-border-tertiary);word-break:break-all;line-height:1.4}
 .verify-empty{font-size:12px;color:var(--color-text-danger)}
 .verify-scan-drop.drag-over{border-color:var(--color-border-secondary);background:var(--color-background-secondary);outline:2px dashed var(--color-border-secondary);outline-offset:-2px}
-.verify-scan-input-row{display:flex;align-items:center;gap:8px}
-.verify-scan-input-row input[type="file"]{flex:1;min-width:0}
+.verify-scan-input-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:relative}
+.verify-scan-input-row button{flex:1 1 auto;min-width:0;justify-content:center}
+.verify-photo-input-hidden{opacity:0;position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 #scan-photo-btn{flex-shrink:0;white-space:nowrap}
+.verify-scan-drop{cursor:pointer}
 .verify-scan-preview{display:none;max-width:100%;max-height:180px;margin-bottom:8px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md)}
 .verify-scan-preview.visible{display:block}
 #scan-status{font-size:12px;min-height:18px;margin-bottom:8px;line-height:1.4}
@@ -187,9 +190,8 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
   .barcode-preview-wrap{overflow-x:hidden;align-items:center}
   .btn-row button{flex:1 1 calc(50% - 4px);min-width:min(100%,9rem);justify-content:center}
   .actions .act-btn{flex:1 1 calc(50% - 4px);min-width:min(100%,7.5rem)}
-  .verify-scan-input-row{flex-wrap:wrap}
-  .verify-scan-input-row input[type="file"]{flex:1 1 100%;min-width:0}
-  #scan-photo-btn{flex:1 1 100%;justify-content:center}
+  .verify-scan-input-row button{flex:1 1 calc(50% - 4px);min-width:min(100%,9rem)}
+  #scan-photo-btn{flex:1 1 100%}
   .verify-barcode-head{flex-wrap:wrap}
   .result-row{flex-wrap:wrap}
   .fname{min-width:0;flex:1 1 5rem}
@@ -402,12 +404,13 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
   <div class="section verify-scan-drop" id="verify-scan-drop" style="margin-bottom:10px;padding:10px 12px">
     <div class="sec-title"><i class="ti ti-upload" aria-hidden="true"></i> Scan from photo</div>
     <div class="field" style="margin:0;margin-bottom:10px">
-      <label for="verifyPhotoInput">Label photo</label>
       <div class="verify-scan-input-row">
-        <input type="file" id="verifyPhotoInput" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,image/avif,image/tiff,image/x-tiff,.jpg,.jpeg,.png,.webp,.gif,.bmp,.avif,.tif,.tiff" capture="environment" onchange="onVerifyPhotoSelect()" />
+        <button type="button" id="verify-take-photo-btn" onclick="openVerifyPhotoPicker({capture:true})"><i class="ti ti-camera" aria-hidden="true"></i> Take photo</button>
+        <button type="button" id="verify-choose-photo-btn" onclick="openVerifyPhotoPicker({capture:false})"><i class="ti ti-photo" aria-hidden="true"></i> Choose photo</button>
+        <input type="file" id="verifyPhotoInput" accept="image/*" class="verify-photo-input-hidden" tabindex="-1" aria-hidden="true" onchange="onVerifyPhotoSelect()" />
         <button type="button" id="scan-photo-btn" onclick="onScanLabelPhoto()" disabled><i class="ti ti-scan" aria-hidden="true"></i> Scan photo</button>
       </div>
-      <div class="hint"><span class="hint-desktop">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · drag and drop</span><span class="hint-mobile">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · tap to choose or take a photo</span></div>
+      <div class="hint"><span class="hint-desktop">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · drag and drop or use the buttons above</span><span class="hint-mobile">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · tap Take photo, Choose photo, or anywhere in this area</span></div>
     </div>
     <img id="verifyPhotoPreview" class="verify-scan-preview" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
     <div id="scan-status" class="pending" aria-live="polite"></div>
@@ -471,6 +474,7 @@ const EXAMPLE = {
   netWeight: '1.25',
   count: '24',
 };
+// High serials reserved for demos — never written to the SSCC log.
 const EXAMPLE_SSCC_SERIAL=999999900;
 
 function switchTab(t) {
@@ -479,6 +483,7 @@ function switchTab(t) {
   document.getElementById('panel-verify').classList.toggle('active',t==='verify');
 }
 
+// ZT420 label size presets — max print width 168 mm, min width 51 mm
 const LABEL_SIZE_PRESETS={
   '147x209':{w:147,h:209,page:'147mm 209mm'},   // your label stock
   '101x152':{w:101,h:152,page:'101mm 152mm'},   // 4"×6" shipping label
@@ -1615,6 +1620,7 @@ function getLabelSizeMm() {
     const p=LABEL_SIZE_PRESETS[preset];
     return {w:p.w,h:p.h,page:p.page,preset};
   }
+  // ZT420 hardware limits: min 51 mm, max 168 mm print width
   const w=Math.min(168,Math.max(51,parseInt(document.getElementById('labelWidthMm').value,10)||147));
   const h=Math.max(20,parseInt(document.getElementById('labelHeightMm').value,10)||209);
   return {w,h,page:`${w}mm ${h}mm`,preset:'custom'};
@@ -1646,7 +1652,10 @@ function getPrinterDpi() {
   return el?parseInt(el.value,10)||203:203;
 }
 
-
+// ZT420: when DPI changes, suggest a matching bar width so the physical bar
+// width stays close to the GS1-128 minimum (0.495 mm X-dimension).
+// At 203 dpi: 1 dot ≈ 0.125 mm; 4 dots ≈ 0.50 mm (≥ X min)
+// At 300 dpi: 1 dot ≈ 0.0847 mm; 6 dots ≈ 0.508 mm (≥ X min)
 function onPrinterDpiChange() {
   const dpi=getPrinterDpi();
   const barWidthEl=document.getElementById('barWidth');
@@ -2273,9 +2282,18 @@ async function loadVerifyExample(){
 }
 const VERIFY_PHOTO_EXT=/\.(jpe?g|png|webp|gif|bmp|avif|tiff?)$/i;
 let verifyPhotoFallbackFile=null;
+let verifyPhotoAutoScan=false;
+
+function isVerifyHeicFile(file) {
+  if (!file) return false;
+  const name=(file.name||'').toLowerCase();
+  const type=(file.type||'').toLowerCase();
+  return /\.heic$|\.heif$/.test(name)||type==='image/heic'||type==='image/heif';
+}
 
 function isVerifyPhotoFile(file) {
   if (!file) return false;
+  if (isVerifyHeicFile(file)) return false;
   if (file.type&&file.type.startsWith('image/')) return true;
   return VERIFY_PHOTO_EXT.test(file.name||'');
 }
@@ -2328,6 +2346,17 @@ function setVerifyPhotoFile(file) {
     clearVerifyPhotoPreview();
     return;
   }
+  if (isVerifyHeicFile(file)) {
+    verifyPhotoFallbackFile=null;
+    assignVerifyPhotoInput(null);
+    clearVerifyPhotoPreview();
+    if (status) {
+      status.textContent='HEIC/HEIF is not supported. Change camera format to JPEG or save as PNG first.';
+      status.className='err';
+    }
+    verifyPhotoAutoScan=false;
+    return;
+  }
   if (!isVerifyPhotoFile(file)) {
     verifyPhotoFallbackFile=null;
     assignVerifyPhotoInput(null);
@@ -2336,6 +2365,7 @@ function setVerifyPhotoFile(file) {
       status.textContent='Choose a supported image (JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF).';
       status.className='err';
     }
+    verifyPhotoAutoScan=false;
     return;
   }
   assignVerifyPhotoInput(file);
@@ -2344,11 +2374,16 @@ function setVerifyPhotoFile(file) {
     preview.src=reader.result;
     preview.classList.add('visible');
     btn.disabled=false;
-    status.textContent='Photo ready — click Scan photo.';
+    status.textContent='Photo ready — scanning…';
     status.className='pending';
+    if (verifyPhotoAutoScan) {
+      verifyPhotoAutoScan=false;
+      onScanLabelPhoto();
+    }
   };
   reader.onerror=()=>{
     verifyPhotoFallbackFile=null;
+    verifyPhotoAutoScan=false;
     assignVerifyPhotoInput(null);
     clearVerifyPhotoPreview();
     status.textContent='Could not read image file.';
@@ -2362,9 +2397,35 @@ function onVerifyPhotoSelect() {
   setVerifyPhotoFile(input.files&&input.files[0]);
 }
 
+function openVerifyPhotoPicker(options) {
+  const capture=!!(options&&options.capture);
+  if (!document.getElementById('panel-verify').classList.contains('active')) {
+    switchTab('verify');
+  }
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='image/*';
+  input.style.cssText='opacity:0;position:absolute;width:0;height:0;overflow:hidden';
+  if (capture) input.setAttribute('capture','environment');
+  input.addEventListener('change',()=>{
+    const file=input.files&&input.files[0];
+    if (file) {
+      verifyPhotoAutoScan=true;
+      setVerifyPhotoFile(file);
+    }
+    input.remove();
+  },{once:true});
+  document.body.appendChild(input);
+  input.click();
+}
+
 function initVerifyPhotoDrop() {
   const zone=document.getElementById('verify-scan-drop');
   if (!zone) return;
+  zone.addEventListener('click',(e)=>{
+    if (e.target.closest('button,input,a,textarea,select,label')) return;
+    openVerifyPhotoPicker({capture:false});
+  });
   let dragDepth=0;
   zone.addEventListener('dragenter',(e)=>{
     if (![...e.dataTransfer.types].includes('Files')) return;

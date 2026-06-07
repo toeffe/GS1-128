@@ -27,7 +27,7 @@ When a GS1 company prefix is configured, SSCCs are reserved on **Generate barcod
 
 Paste scanner output or `(AI)value` notation. The verifier parses FNC1-separated strings, decodes application identifiers, and flags errors and warnings (check digits, date formats, GS1-82 charset, length limits).
 
-**Scan from photo** — on the Verify tab, upload or drag-and-drop a label photo to decode CODE128 barcodes (JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF). Works offline when you open `index.html` directly; no local server. Chrome or Edge recommended; on mobile you can take a photo with the device camera. For best results, crop the photo to a single barcode; full labels with three barcodes may need several tries or better lighting.
+**Scan from photo** — on the Verify tab, use **Take photo** (rear camera) or **Choose photo** (gallery), or drag-and-drop on desktop, to decode CODE128 barcodes (JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF). The photo scans automatically after selection. Works offline when you open `index.html` directly; no local server. Chrome or Edge recommended on mobile. HEIC/HEIF (common on iPhone) is not supported — use JPEG or PNG. For best results, crop the photo to a single barcode; full labels with three barcodes may need several tries or better lighting.
 
 ### Data persistence
 
