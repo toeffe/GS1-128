@@ -179,7 +179,6 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
 .verify-photo-picker-btn:active{transform:scale(.98)}
 .verify-photo-input-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 #scan-photo-btn{flex-shrink:0;white-space:nowrap}
-#verify-take-photo-btn{display:none}
 .verify-scan-drop{cursor:pointer}
 .verify-scan-preview{display:none;max-width:100%;max-height:180px;margin-bottom:8px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md)}
 .verify-scan-preview.visible{display:block}
@@ -197,7 +196,6 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
   .barcode-preview-wrap{overflow-x:hidden;align-items:center}
   .btn-row button{flex:1 1 calc(50% - 4px);min-width:min(100%,9rem);justify-content:center}
   .actions .act-btn{flex:1 1 calc(50% - 4px);min-width:min(100%,7.5rem)}
-  #verify-take-photo-btn{display:flex}
   .verify-scan-input-row button,.verify-scan-input-row .verify-photo-picker-btn{flex:1 1 calc(50% - 4px);min-width:min(100%,9rem)}
   #scan-photo-btn{flex:1 1 100%}
   .verify-barcode-head{flex-wrap:wrap}
@@ -413,12 +411,11 @@ textarea:focus{outline:none;border-color:var(--color-border-primary)}
     <div class="sec-title"><i class="ti ti-upload" aria-hidden="true"></i> Scan from photo</div>
     <div class="field" style="margin:0;margin-bottom:10px">
       <div class="verify-scan-input-row">
-        <button type="button" id="verify-take-photo-btn" onclick="openVerifyPhotoPicker({capture:true})"><i class="ti ti-camera" aria-hidden="true"></i> Take photo</button>
         <label id="verify-choose-photo-btn" for="verifyPhotoInput" class="verify-photo-picker-btn" role="button" onclick="prepareVerifyPhotoChoose()"><i class="ti ti-photo" aria-hidden="true"></i><span class="verify-choose-label-desktop">Upload photo</span><span class="verify-choose-label-mobile">Choose photo</span></label>
         <input type="file" id="verifyPhotoInput" accept="image/*" class="verify-photo-input-hidden" tabindex="-1" aria-hidden="true" onchange="onVerifyPhotoSelect()" />
         <button type="button" id="scan-photo-btn" onclick="onScanLabelPhoto()" disabled><i class="ti ti-scan" aria-hidden="true"></i> Scan photo</button>
       </div>
-      <div class="hint"><span class="hint-desktop">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · drag and drop or Upload photo</span><span class="hint-mobile">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · Take photo opens Camera (Android: pick Camera in the list), Choose photo opens gallery, or tap this area</span></div>
+      <div class="hint"><span class="hint-desktop">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · drag and drop or Upload photo</span><span class="hint-mobile">JPEG, PNG, WebP, GIF, BMP, AVIF, TIFF · Choose photo opens gallery or camera, or tap this area</span></div>
     </div>
     <img id="verifyPhotoPreview" class="verify-scan-preview" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
     <div id="scan-status" class="pending" aria-live="polite"></div>
@@ -2412,45 +2409,6 @@ function prepareVerifyPhotoChoose() {
   input.removeAttribute('capture');
   input.accept='image/*';
   input.value='';
-}
-
-function configureVerifyPhotoPickerInput(input,capture) {
-  input.removeAttribute('capture');
-  if (!capture) {
-    input.accept='image/*';
-    return;
-  }
-  if (/Android/i.test(navigator.userAgent)) {
-    // capture=environment silently fails on many Android Chrome builds (incl. Android 14+).
-    // Non-standard MIME restores the Camera option in the system picker.
-    input.accept='image/*,android/allowCamera';
-    return;
-  }
-  input.accept='image/*';
-  input.setAttribute('capture','environment');
-}
-
-function openVerifyPhotoPicker(options) {
-  const capture=!!(options&&options.capture);
-  if (!document.getElementById('panel-verify').classList.contains('active')) {
-    switchTab('verify');
-  }
-  const input=document.createElement('input');
-  input.type='file';
-  configureVerifyPhotoPickerInput(input,capture);
-  input.style.cssText='position:fixed;top:-100px;left:-100px;width:1px;height:1px;opacity:0.01;overflow:hidden';
-  const cleanup=()=>{ input.remove(); };
-  input.addEventListener('change',()=>{
-    const file=input.files&&input.files[0];
-    if (file) {
-      verifyPhotoAutoScan=true;
-      setVerifyPhotoFile(file);
-    }
-    cleanup();
-  },{once:true});
-  input.addEventListener('cancel',cleanup,{once:true});
-  document.body.appendChild(input);
-  input.click();
 }
 
 function initVerifyPhotoDrop() {
